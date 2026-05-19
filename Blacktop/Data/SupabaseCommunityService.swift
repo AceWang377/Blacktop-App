@@ -56,7 +56,7 @@ struct SupabaseCommunityService {
         return session
     }
 
-    func submitFactUpdate(courtID: String, draft: CourtFactUpdateDraft, session: ContributorSession?) async throws {
+    func submitFactVote(courtID: String, draft: CourtFactUpdateDraft, session: ContributorSession?) async throws {
         guard let session else {
             throw SupabaseCommunityError.missingSession
         }
@@ -64,16 +64,67 @@ struct SupabaseCommunityService {
             return
         }
 
-        let url = SupabaseConfig.projectURL.appending(path: "/rest/v1/court_fact_updates")
+        var components = URLComponents(
+            url: SupabaseConfig.projectURL.appending(path: "/rest/v1/court_fact_votes"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [
+            URLQueryItem(name: "on_conflict", value: "court_id,user_id,field_key")
+        ]
+        guard let url = components?.url else {
+            throw SupabaseCommunityError.invalidURL
+        }
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         applyRESTHeaders(to: &request, accessToken: session.accessToken)
-        request.setValue("return=minimal", forHTTPHeaderField: "Prefer")
+        request.setValue("resolution=merge-duplicates,return=minimal", forHTTPHeaderField: "Prefer")
         request.httpBody = try JSONEncoder.snakeCase.encode(
-            FactUpdateRequest(courtId: courtID, fieldKey: draft.field.rawValue, suggestedValue: value)
+            FactVoteRequest(courtId: courtID, fieldKey: draft.field.rawValue, voteValue: value)
         )
 
         try await performEmptyRequest(request)
+    }
+
+    func fetchFactVoteSummaries(courtID: String) async throws -> [CourtFactVoteSummary] {
+        var components = URLComponents(
+            url: SupabaseConfig.projectURL.appending(path: "/rest/v1/court_fact_vote_summaries"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [
+            URLQueryItem(name: "select", value: "*"),
+            URLQueryItem(name: "court_id", value: "eq.\(courtID)"),
+            URLQueryItem(name: "order", value: "field_key.asc,percentage.desc")
+        ]
+        guard let url = components?.url else {
+            throw SupabaseCommunityError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        applyRESTHeaders(to: &request, accessToken: SupabaseConfig.publishableKey)
+        let rows: [CourtFactVoteSummaryDTO] = try await performDecodedRequest(request)
+        return rows.compactMap(\.summary)
+    }
+
+    func fetchUserFactVotes(courtID: String, session: ContributorSession?) async throws -> [CourtFactUserVote] {
+        guard let session else { return [] }
+        var components = URLComponents(
+            url: SupabaseConfig.projectURL.appending(path: "/rest/v1/court_fact_votes"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [
+            URLQueryItem(name: "select", value: "court_id,field_key,vote_value"),
+            URLQueryItem(name: "court_id", value: "eq.\(courtID)"),
+            URLQueryItem(name: "order", value: "field_key.asc")
+        ]
+        guard let url = components?.url else {
+            throw SupabaseCommunityError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        applyRESTHeaders(to: &request, accessToken: session.accessToken)
+        let rows: [CourtFactUserVoteDTO] = try await performDecodedRequest(request)
+        return rows.compactMap(\.vote)
     }
 
     func fetchVibeSummaries(courtID: String) async throws -> [CourtVibeSummary] {
@@ -94,6 +145,27 @@ struct SupabaseCommunityService {
         applyRESTHeaders(to: &request, accessToken: SupabaseConfig.publishableKey)
         let rows: [CourtVibeSummaryDTO] = try await performDecodedRequest(request)
         return rows.compactMap(\.summary)
+    }
+
+    func fetchUserVibeVotes(courtID: String, session: ContributorSession?) async throws -> [CourtVibeUserVote] {
+        guard let session else { return [] }
+        var components = URLComponents(
+            url: SupabaseConfig.projectURL.appending(path: "/rest/v1/court_vibe_votes"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [
+            URLQueryItem(name: "select", value: "court_id,category,option"),
+            URLQueryItem(name: "court_id", value: "eq.\(courtID)"),
+            URLQueryItem(name: "order", value: "category.asc")
+        ]
+        guard let url = components?.url else {
+            throw SupabaseCommunityError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        applyRESTHeaders(to: &request, accessToken: session.accessToken)
+        let rows: [CourtVibeUserVoteDTO] = try await performDecodedRequest(request)
+        return rows.compactMap(\.vote)
     }
 
     func submitVibeVote(courtID: String, category: CourtVibeCategory, option: CourtVibeOption, session: ContributorSession?) async throws {
@@ -121,6 +193,81 @@ struct SupabaseCommunityService {
         )
 
         try await performEmptyRequest(request)
+    }
+
+    func fetchSavedCourtIDs(session: ContributorSession?) async throws -> Set<String> {
+        guard let session else { return [] }
+        var components = URLComponents(
+            url: SupabaseConfig.projectURL.appending(path: "/rest/v1/saved_courts"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [
+            URLQueryItem(name: "select", value: "court_id"),
+            URLQueryItem(name: "order", value: "created_at.desc")
+        ]
+        guard let url = components?.url else {
+            throw SupabaseCommunityError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        applyRESTHeaders(to: &request, accessToken: session.accessToken)
+        let rows: [SavedCourtDTO] = try await performDecodedRequest(request)
+        return Set(rows.map(\.courtId))
+    }
+
+    func saveCourt(courtID: String, session: ContributorSession?) async throws {
+        guard let session else {
+            throw SupabaseCommunityError.missingSession
+        }
+
+        var components = URLComponents(
+            url: SupabaseConfig.projectURL.appending(path: "/rest/v1/saved_courts"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [
+            URLQueryItem(name: "on_conflict", value: "user_id,court_id")
+        ]
+        guard let url = components?.url else {
+            throw SupabaseCommunityError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        applyRESTHeaders(to: &request, accessToken: session.accessToken)
+        request.setValue("resolution=ignore-duplicates,return=minimal", forHTTPHeaderField: "Prefer")
+        request.httpBody = try JSONEncoder.snakeCase.encode(SavedCourtDTO(courtId: courtID))
+        try await performEmptyRequest(request)
+    }
+
+    func removeSavedCourt(courtID: String, session: ContributorSession?) async throws {
+        guard let session else {
+            throw SupabaseCommunityError.missingSession
+        }
+
+        var components = URLComponents(
+            url: SupabaseConfig.projectURL.appending(path: "/rest/v1/saved_courts"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [
+            URLQueryItem(name: "court_id", value: "eq.\(courtID)")
+        ]
+        guard let url = components?.url else {
+            throw SupabaseCommunityError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        applyRESTHeaders(to: &request, accessToken: session.accessToken)
+        request.setValue("return=minimal", forHTTPHeaderField: "Prefer")
+        try await performEmptyRequest(request)
+    }
+
+    func syncSavedCourtIDs(_ courtIDs: Set<String>, session: ContributorSession?) async throws -> Set<String> {
+        guard let session else { return courtIDs }
+        for courtID in courtIDs {
+            try await saveCourt(courtID: courtID, session: session)
+        }
+        return try await fetchSavedCourtIDs(session: session)
     }
 
     private func applyRESTHeaders(to request: inout URLRequest, accessToken: String) {
@@ -176,10 +323,10 @@ private struct SupabaseAuthUser: Decodable {
     var email: String?
 }
 
-private struct FactUpdateRequest: Encodable {
+private struct FactVoteRequest: Encodable {
     var courtId: String
     var fieldKey: String
-    var suggestedValue: String
+    var voteValue: String
 }
 
 private struct VibeVoteRequest: Encodable {
@@ -210,6 +357,60 @@ private struct CourtVibeSummaryDTO: Decodable {
             percentage: percentage
         )
     }
+}
+
+private struct CourtFactVoteSummaryDTO: Decodable {
+    var courtId: String
+    var fieldKey: String
+    var voteValue: String
+    var voteCount: Int
+    var fieldTotal: Int
+    var percentage: Int
+
+    var summary: CourtFactVoteSummary? {
+        guard let field = CommunityFactField(rawValue: fieldKey) else {
+            return nil
+        }
+        return CourtFactVoteSummary(
+            courtID: courtId,
+            field: field,
+            value: voteValue,
+            voteCount: voteCount,
+            fieldTotal: fieldTotal,
+            percentage: percentage
+        )
+    }
+}
+
+private struct CourtFactUserVoteDTO: Decodable {
+    var courtId: String
+    var fieldKey: String
+    var voteValue: String
+
+    var vote: CourtFactUserVote? {
+        guard let field = CommunityFactField(rawValue: fieldKey) else {
+            return nil
+        }
+        return CourtFactUserVote(courtID: courtId, field: field, value: voteValue)
+    }
+}
+
+private struct CourtVibeUserVoteDTO: Decodable {
+    var courtId: String
+    var category: String
+    var option: String
+
+    var vote: CourtVibeUserVote? {
+        guard let category = CourtVibeCategory(rawValue: category),
+              let option = CourtVibeOption(rawValue: option) else {
+            return nil
+        }
+        return CourtVibeUserVote(courtID: courtId, category: category, option: option)
+    }
+}
+
+private struct SavedCourtDTO: Codable {
+    var courtId: String
 }
 
 private struct CommunitySessionKeychain {

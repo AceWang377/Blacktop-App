@@ -15,9 +15,9 @@ struct CourtFactUpdateSheetView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     CommunitySignInPanel()
 
-                    SectionCard(title: store.localized("Update a court fact", "更新球场事实")) {
+                    SectionCard(title: store.localized("Vote on court facts", "投票球场事实")) {
                         VStack(alignment: .leading, spacing: 14) {
-                            Text(store.localized("Pick one factual detail you know from playing here. Updates are reviewed before they change the public court page.", "选择一个你实际知道的球场事实。提交后会先审核，再更新到公开详情。"))
+                            Text(store.localized("Pick one practical detail you know from playing here. Your vote appears as a count so other players can judge confidence.", "选择一个你实际知道的球场细节。你的投票会以数字显示，方便其他球员判断可信度。"))
                                 .font(.subheadline)
                                 .foregroundStyle(.white.opacity(0.64))
 
@@ -72,10 +72,10 @@ struct CourtFactUpdateSheetView: View {
                     Button(store.localized("Close", "关闭")) { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(store.localized("Submit", "提交")) {
+                    Button(store.localized("Save vote", "保存投票")) {
                         Task {
-                            await store.submitFactUpdate(for: court, draft: draft)
-                            if store.communityMessage?.contains("Thanks") == true || store.communityMessage?.contains("谢谢") == true {
+                            await store.submitFactVote(for: court, draft: draft)
+                            if store.communityMessage?.contains("Vote saved") == true || store.communityMessage?.contains("投票已保存") == true {
                                 dismiss()
                             }
                         }
@@ -115,7 +115,7 @@ struct CourtVibeVoteSheetView: View {
 
                     SectionCard(title: store.localized("Vote court vibe", "投票球场氛围")) {
                         VStack(alignment: .leading, spacing: 16) {
-                            Text(store.localized("This is not live occupancy. It helps players understand the usual run style before they travel.", "这不是实时人数，而是帮助球员了解这个球场平时是什么类型的局。"))
+                Text(store.localized("This is not live occupancy. It helps players understand the usual run style before they travel. Each label shows how many players chose it.", "这不是实时人数，而是帮助球员了解这个球场平时是什么类型的局。每个标签会显示选择它的人数。"))
                                 .font(.subheadline)
                                 .foregroundStyle(.white.opacity(0.64))
 
@@ -191,10 +191,9 @@ struct CourtVibeVoteSheetView: View {
 
 struct CommunitySignInPanel: View {
     @EnvironmentObject private var store: AppStore
-    @State private var currentNonce: String?
 
     var body: some View {
-        SectionCard(title: store.localized("Contributor access", "贡献者权限")) {
+        SectionCard(title: store.localized("Account", "账号")) {
             VStack(alignment: .leading, spacing: 12) {
                 if let session = store.contributorSession {
                     HStack(spacing: 12) {
@@ -210,45 +209,49 @@ struct CommunitySignInPanel: View {
                                 .lineLimit(1)
                         }
                         Spacer()
-                        Button(store.localized("Sign out", "退出")) {
-                            store.signOutContributor()
-                        }
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.white.opacity(0.68))
                     }
                 } else {
-                    Text(store.localized("Sign in is only needed to vote or submit court facts. Browsing stays account-free.", "只有投票或提交球场事实时才需要登录。浏览地图仍然无需账号。"))
+                    Text(store.localized("Sign in with Apple to vote. Browsing stays account-free.", "使用 Apple 登录后即可投票。浏览地图仍然无需账号。"))
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.64))
 
-                    SignInWithAppleButton(.signIn) { request in
-                        let nonce = AppleSignInNonce.random()
-                        currentNonce = nonce
-                        request.requestedScopes = [.email]
-                        request.nonce = AppleSignInNonce.sha256(nonce)
-                    } onCompletion: { result in
-                        switch result {
-                        case .success(let authorization):
-                            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
-                                  let tokenData = credential.identityToken,
-                                  let token = String(data: tokenData, encoding: .utf8),
-                                  let nonce = currentNonce else {
-                                store.communityMessage = store.localized("Apple did not return a valid sign-in token.", "Apple 未返回有效登录凭证。")
-                                return
-                            }
-                            Task {
-                                await store.signInWithApple(identityToken: token, nonce: nonce)
-                            }
-                        case .failure:
-                            store.communityMessage = store.localized("Apple sign in was cancelled or failed.", "Apple 登录已取消或失败。")
-                        }
-                    }
-                    .signInWithAppleButtonStyle(.white)
-                    .frame(height: 48)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    BlacktopAppleSignInButton()
                 }
             }
         }
+    }
+}
+
+struct BlacktopAppleSignInButton: View {
+    @EnvironmentObject private var store: AppStore
+    @State private var currentNonce: String?
+
+    var body: some View {
+        SignInWithAppleButton(.signIn) { request in
+            let nonce = AppleSignInNonce.random()
+            currentNonce = nonce
+            request.requestedScopes = [.email]
+            request.nonce = AppleSignInNonce.sha256(nonce)
+        } onCompletion: { result in
+            switch result {
+            case .success(let authorization):
+                guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                      let tokenData = credential.identityToken,
+                      let token = String(data: tokenData, encoding: .utf8),
+                      let nonce = currentNonce else {
+                    store.communityMessage = store.localized("Apple did not return a valid sign-in token.", "Apple 未返回有效登录凭证。")
+                    return
+                }
+                Task {
+                    await store.signInWithApple(identityToken: token, nonce: nonce)
+                }
+            case .failure:
+                store.communityMessage = store.localized("Apple sign in was cancelled or failed.", "Apple 登录已取消或失败。")
+            }
+        }
+        .signInWithAppleButtonStyle(.white)
+        .frame(height: 48)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

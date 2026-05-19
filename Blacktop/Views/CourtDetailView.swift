@@ -1,5 +1,6 @@
 import SwiftUI
 import MapKit
+import UIKit
 
 struct CourtDetailView: View {
     @EnvironmentObject private var store: AppStore
@@ -7,6 +8,8 @@ struct CourtDetailView: View {
     let court: Court
     @State private var isShowingFactUpdateSheet = false
     @State private var isShowingVibeVoteSheet = false
+    @State private var isShowingDirectionsDialog = false
+    @State private var copiedDirectionsMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -14,6 +17,7 @@ struct CourtDetailView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     header
                     quickFacts
+                    communityFactVotes
                     courtVibe
                     bestFor
                     communityUpdate
@@ -34,7 +38,9 @@ struct CourtDetailView: View {
                 }
             }
             .task(id: court.id) {
-                await store.loadVibeSummaries(for: court)
+                async let vibeLoad: Void = store.loadVibeSummaries(for: court)
+                async let factLoad: Void = store.loadFactVotes(for: court)
+                _ = await (vibeLoad, factLoad)
             }
             .sheet(isPresented: $isShowingFactUpdateSheet) {
                 CourtFactUpdateSheetView(court: court)
@@ -56,12 +62,29 @@ struct CourtDetailView: View {
                     .buttonStyle(SecondaryButtonStyle())
 
                     Button(store.copy(.directions)) {
-                        openDirections()
+                        isShowingDirectionsDialog = true
                     }
                     .buttonStyle(PrimaryButtonStyle())
                 }
                 .padding(20)
                 .background(.black.opacity(0.72))
+            }
+            .confirmationDialog(store.copy(.directions), isPresented: $isShowingDirectionsDialog, titleVisibility: .visible) {
+                Button(store.localized("Open in Apple Maps", "使用 Apple 地图打开")) {
+                    openAppleMaps()
+                }
+                Button(store.localized("Open in Google Maps", "使用 Google 地图打开")) {
+                    openGoogleMaps()
+                }
+                Button(store.localized("Copy address", "复制地址")) {
+                    copyAddress()
+                }
+                Button(store.localized("Copy coordinates", "复制坐标")) {
+                    copyCoordinates()
+                }
+                Button(store.localized("Cancel", "取消"), role: .cancel) {}
+            } message: {
+                Text(court.name)
             }
         }
     }
@@ -126,10 +149,58 @@ struct CourtDetailView: View {
         }
     }
 
+    private var communityFactVotes: some View {
+        SectionCard(title: store.localized("Player fact votes", "球员事实投票")) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text(store.localized("Labels show how many signed-in players chose each fact. Use the counts as confidence, not a formal rating.", "标签数字代表有多少已登录球员选择了这个事实。请把数字当作参考信心，而不是正式评分。"))
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.62))
+
+                let summaries = groupedFactVoteSummaries
+                if summaries.isEmpty {
+                    FlowLayout(spacing: 8) {
+                        FactChip(label: store.localized("No votes yet", "暂无投票"), tone: .unknown)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 13) {
+                        ForEach(summaries, id: \.field) { group in
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(group.field.title(store.appLanguage))
+                                    .font(.caption.weight(.black))
+                                    .foregroundStyle(.white.opacity(0.56))
+
+                                FlowLayout(spacing: 8) {
+                                    ForEach(group.summaries) { summary in
+                                        FactChip(label: summary.label(store.appLanguage), tone: factVoteTone(summary))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let userVotes = store.userFactVotesByCourtID[court.id] ?? []
+                if !userVotes.isEmpty {
+                    Text(store.localized("Your votes: \(userVotes.map { $0.label(store.appLanguage) }.joined(separator: ", "))", "你的投票：\(userVotes.map { $0.label(store.appLanguage) }.joined(separator: "，"))"))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(HLColor.freshGreen.opacity(0.88))
+                }
+
+                Button {
+                    isShowingFactUpdateSheet = true
+                } label: {
+                    Label(store.localized("Vote on facts", "投票球场事实"), systemImage: "checklist")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SecondaryButtonStyle())
+            }
+        }
+    }
+
     private var courtVibe: some View {
         SectionCard(title: store.localized("Court vibe", "球场氛围")) {
             VStack(alignment: .leading, spacing: 14) {
-                Text(store.localized("Community votes describe the usual run style here, not live occupancy.", "社区投票展示这里平时的打球氛围，不代表实时人数。"))
+                Text(store.localized("Community votes describe the usual run style here, not live occupancy. Counts show how many players chose each label.", "社区投票展示这里平时的打球氛围，不代表实时人数。数字代表选择该标签的球员人数。"))
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.62))
 
@@ -144,6 +215,13 @@ struct CourtDetailView: View {
                             }
                         }
                     }
+                }
+
+                let userVotes = store.userVibeVotesByCourtID[court.id] ?? []
+                if !userVotes.isEmpty {
+                    Text(store.localized("Your vibe votes: \(userVotes.map { $0.option.label(store.appLanguage) }.joined(separator: ", "))", "你的氛围投票：\(userVotes.map { $0.option.label(store.appLanguage) }.joined(separator: "，"))"))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(HLColor.freshGreen.opacity(0.88))
                 }
 
                 Button {
@@ -170,7 +248,7 @@ struct CourtDetailView: View {
     private var communityUpdate: some View {
         SectionCard(title: store.localized("Know this court?", "熟悉这个球场？")) {
             VStack(alignment: .leading, spacing: 12) {
-                Text(store.localized("Help complete practical facts like nets, lights, rain impact, rim height and facilities. Sign in is only required when you submit.", "帮助补全篮网、灯光、雨后状态、篮筐高度和设施等实用信息。只有提交时需要登录。"))
+                Text(store.localized("Help complete practical facts like nets, lights, rain impact, rim height and facilities. Sign in is only required when you vote.", "帮助补全篮网、灯光、雨后状态、篮筐高度和设施等实用信息。只有投票时需要登录。"))
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.62))
 
@@ -182,7 +260,7 @@ struct CourtDetailView: View {
                 Button {
                     isShowingFactUpdateSheet = true
                 } label: {
-                    Label(store.localized("Update a fact", "更新一个事实"), systemImage: "checklist")
+                    Label(store.localized("Vote on a fact", "投票一个事实"), systemImage: "checklist")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(SecondaryButtonStyle())
@@ -286,6 +364,26 @@ struct CourtDetailView: View {
             : store.localized("\(missingFactsCount) facts need help", "\(missingFactsCount) 项信息待补充")
     }
 
+    private var groupedFactVoteSummaries: [(field: CommunityFactField, summaries: [CourtFactVoteSummary])] {
+        let summaries = store.factVoteSummariesByCourtID[court.id] ?? []
+        return CommunityFactField.allCases.compactMap { field in
+            let fieldSummaries = summaries
+                .filter { $0.field == field }
+                .sorted {
+                    if $0.voteCount == $1.voteCount { return $0.value < $1.value }
+                    return $0.voteCount > $1.voteCount
+                }
+                .prefix(3)
+            guard !fieldSummaries.isEmpty else { return nil }
+            return (field: field, summaries: Array(fieldSummaries))
+        }
+    }
+
+    private func factVoteTone(_ summary: CourtFactVoteSummary) -> FactTone {
+        if summary.fieldTotal < 3 { return .unknown }
+        return summary.percentage >= 60 ? .positive : .neutral
+    }
+
     private func topVibeSummary(for category: CourtVibeCategory, from summaries: [CourtVibeSummary]) -> CourtVibeSummary? {
         summaries
             .filter { $0.category == category }
@@ -303,7 +401,7 @@ struct CourtDetailView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.82))
                 Spacer()
-                Text(summary.option.label(store.appLanguage))
+                Text(summary.label(store.appLanguage))
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(.white)
             }
@@ -317,9 +415,35 @@ struct CourtDetailView: View {
         }
     }
 
-    private func openDirections() {
+    private func openAppleMaps() {
         let item = MKMapItem(placemark: MKPlacemark(coordinate: court.coordinate))
         item.name = court.name
         item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking])
+    }
+
+    private func openGoogleMaps() {
+        let latitude = court.coordinate.latitude
+        let longitude = court.coordinate.longitude
+        let encodedName = court.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "Court"
+
+        if let appURL = URL(string: "comgooglemaps://?daddr=\(latitude),\(longitude)&directionsmode=walking") {
+            UIApplication.shared.open(appURL) { success in
+                guard !success,
+                      let webURL = URL(string: "https://www.google.com/maps/dir/?api=1&destination=\(latitude),\(longitude)&destination_place_id=\(encodedName)&travelmode=walking") else {
+                    return
+                }
+                UIApplication.shared.open(webURL)
+            }
+        }
+    }
+
+    private func copyAddress() {
+        UIPasteboard.general.string = court.addressLine ?? "\(court.name), \(court.area), \(court.city)"
+        copiedDirectionsMessage = store.localized("Address copied", "地址已复制")
+    }
+
+    private func copyCoordinates() {
+        UIPasteboard.general.string = "\(court.coordinate.latitude), \(court.coordinate.longitude)"
+        copiedDirectionsMessage = store.localized("Coordinates copied", "坐标已复制")
     }
 }

@@ -154,6 +154,43 @@ struct CourtFactUpdateDraft: Equatable {
     }
 }
 
+struct CourtFactVoteSummary: Identifiable, Hashable {
+    var courtID: String
+    var field: CommunityFactField
+    var value: String
+    var voteCount: Int
+    var fieldTotal: Int
+    var percentage: Int
+
+    var id: String {
+        "\(courtID)-\(field.rawValue)-\(value)"
+    }
+
+    func label(_ language: AppLanguage) -> String {
+        "\(field.optionLabel(for: value, language: language)) · \(voteCount)"
+    }
+}
+
+struct CourtFactUserVote: Identifiable, Hashable {
+    var courtID: String
+    var field: CommunityFactField
+    var value: String
+
+    var id: String {
+        "\(courtID)-\(field.rawValue)"
+    }
+
+    func label(_ language: AppLanguage) -> String {
+        "\(field.optionLabel(for: value, language: language))"
+    }
+}
+
+extension CommunityFactField {
+    func optionLabel(for value: String, language: AppLanguage) -> String {
+        options(language).first { $0.value == value }?.label(language) ?? value
+    }
+}
+
 enum CourtVibeCategory: String, CaseIterable, Identifiable, Codable {
     case usualIntensity = "usual_intensity"
     case bestFor = "best_for"
@@ -244,5 +281,19 @@ struct CourtVibeSummary: Identifiable, Hashable, Decodable {
 
     var id: String {
         "\(courtID)-\(category.rawValue)-\(option.rawValue)"
+    }
+
+    func label(_ language: AppLanguage) -> String {
+        "\(option.label(language)) · \(voteCount)"
+    }
+}
+
+struct CourtVibeUserVote: Identifiable, Hashable, Decodable {
+    var courtID: String
+    var category: CourtVibeCategory
+    var option: CourtVibeOption
+
+    var id: String {
+        "\(courtID)-\(category.rawValue)"
     }
 }

@@ -14,6 +14,7 @@ struct ProfileView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     header
                     quickStats
+                    accountSection
                     languageSection
                     librarySection
                     dataSection
@@ -83,11 +84,68 @@ struct ProfileView: View {
     private var librarySection: some View {
         SectionCard(title: store.localized("Your Blacktop", "你的 Blacktop")) {
             VStack(spacing: 10) {
-                ProfileLink(title: store.localized("Saved courts", "收藏球场"), subtitle: store.localized("Your local list", "你的本机列表"), icon: "bookmark.fill") {
+                ProfileLink(title: store.localized("Saved courts", "收藏球场"), subtitle: savedCourtsSubtitle, icon: "bookmark.fill") {
                     SavedCourtsView()
                 }
             }
         }
+    }
+
+    private var accountSection: some View {
+        SectionCard(title: store.localized("Account", "账号")) {
+            VStack(alignment: .leading, spacing: 12) {
+                if let session = store.contributorSession {
+                    HStack(spacing: 12) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(HLColor.night)
+                            .frame(width: 38, height: 38)
+                            .background(HLColor.freshGreen)
+                            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(store.localized("Signed in with Apple", "已使用 Apple 登录"))
+                                .font(.headline.weight(.bold))
+                                .foregroundStyle(.white)
+                            Text(session.email ?? store.localized("Private Apple relay", "Apple 隐私邮箱"))
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.white.opacity(0.58))
+                                .lineLimit(1)
+                        }
+
+                        Spacer()
+                    }
+
+                    Text(store.isSyncingSavedCourts ? store.localized("Syncing saved courts...", "正在同步收藏球场...") : store.localized("Your votes and saved courts can follow this Apple account.", "你的投票和收藏球场可以跟随这个 Apple 账号。"))
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.62))
+
+                    Button {
+                        HLHaptics.light()
+                        store.signOutContributor()
+                    } label: {
+                        Label(store.localized("Sign out", "退出登录"), systemImage: "rectangle.portrait.and.arrow.right")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(SecondaryButtonStyle())
+                } else {
+                    Text(store.localized("Browsing stays account-free. Sign in only when you want to vote on court facts or sync saved courts.", "浏览地图无需账号。只有投票球场事实或同步收藏球场时才需要登录。"))
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.62))
+
+                    BlacktopAppleSignInButton()
+                }
+            }
+        }
+    }
+
+    private var savedCourtsSubtitle: String {
+        if store.contributorSession == nil {
+            return store.localized("Saved on this device", "保存在本机")
+        }
+        return store.isSyncingSavedCourts
+            ? store.localized("Syncing with your account", "正在同步到账号")
+            : store.localized("Synced with your account", "已同步到账号")
     }
 
     private var languageSection: some View {
@@ -274,7 +332,7 @@ struct TermsView: View {
                     .foregroundStyle(.white)
 
                 SectionCard(title: store.localized("Privacy promise", "隐私承诺")) {
-                    Text(store.localized("Blacktop shows practical court facts without requiring an account. Saved courts stay on this device.", "Blacktop 展示实用球场信息，不需要账号。收藏球场只保存在本机。"))
+                    Text(store.localized("Blacktop shows practical court facts without requiring an account. Saved courts stay on this device unless you sign in to sync them.", "Blacktop 展示实用球场信息，不需要账号。收藏球场会保存在本机，除非你登录后选择同步。"))
                         .foregroundStyle(.white.opacity(0.62))
                 }
 

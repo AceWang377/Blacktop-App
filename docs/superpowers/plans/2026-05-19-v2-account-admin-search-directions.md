@@ -389,7 +389,7 @@ Use upsert with `on_conflict=court_id,user_id,field_key`.
 
 Change wording:
 - `Update a court fact` -> `Vote on court facts`
-- `Thanks. Your update is waiting for review.` -> `Thanks. Your vote helps other players.`
+- `Thanks. Your update is waiting for review.` -> `Vote saved. Thanks for helping other players.`
 - Do not say admin will verify every fact.
 
 - [ ] **Step 5: Court details show fact labels with counts**

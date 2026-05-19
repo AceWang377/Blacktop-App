@@ -22,6 +22,10 @@ final class AppStore: ObservableObject {
     @Published var communityMessage: String?
     @Published var isSubmittingCommunityUpdate = false
     @Published var vibeSummariesByCourtID: [String: [CourtVibeSummary]] = [:]
+    @Published var factVoteSummariesByCourtID: [String: [CourtFactVoteSummary]] = [:]
+    @Published var userFactVotesByCourtID: [String: [CourtFactUserVote]] = [:]
+    @Published var userVibeVotesByCourtID: [String: [CourtVibeUserVote]] = [:]
+    @Published var isSyncingSavedCourts = false
 
     private let savedKey = "blacktop.savedCourts"
     private let onboardingKey = "blacktop.hasCompletedOnboarding"
@@ -83,7 +87,13 @@ final class AppStore: ObservableObject {
         } else {
             savedCourtIDs.insert(court.id)
         }
-        UserDefaults.standard.set(Array(savedCourtIDs), forKey: savedKey)
+        persistSavedCourts()
+
+        guard let contributorSession else { return }
+        let isSaved = savedCourtIDs.contains(court.id)
+        Task {
+            await syncRemoteSavedCourt(courtID: court.id, isSaved: isSaved, session: contributorSession)
+        }
     }
 
     func isSaved(_ court: Court) -> Bool {
@@ -159,6 +169,7 @@ final class AppStore: ObservableObject {
         do {
             contributorSession = try await supabaseCommunityService.signInWithApple(identityToken: identityToken, nonce: nonce)
             communityMessage = localized("Signed in. You can now contribute court facts.", "已登录，可以提交球场信息。")
+            await syncSavedCourtsAfterSignIn()
         } catch {
             communityMessage = localized("Sign in failed. Please try again.", "登录失败，请再试一次。")
             print("Blacktop Apple sign in failed: \(error)")
@@ -167,29 +178,42 @@ final class AppStore: ObservableObject {
 
     func signOutContributor() {
         contributorSession = nil
+        userFactVotesByCourtID = [:]
+        userVibeVotesByCourtID = [:]
         supabaseCommunityService.clearSession()
         communityMessage = localized("Signed out.", "已退出登录。")
     }
 
-    func submitFactUpdate(for court: Court, draft: CourtFactUpdateDraft) async {
+    func submitFactVote(for court: Court, draft: CourtFactUpdateDraft) async {
         guard draft.isReady else { return }
         isSubmittingCommunityUpdate = true
         defer { isSubmittingCommunityUpdate = false }
 
         do {
-            try await supabaseCommunityService.submitFactUpdate(courtID: court.id, draft: draft, session: contributorSession)
-            communityMessage = localized("Thanks. Your update is waiting for review.", "谢谢，信息已提交等待审核。")
+            try await supabaseCommunityService.submitFactVote(courtID: court.id, draft: draft, session: contributorSession)
+            communityMessage = localized("Vote saved. Thanks for helping other players.", "投票已保存，谢谢你帮助其他球员。")
+            await loadFactVotes(for: court)
         } catch SupabaseCommunityError.missingSession {
-            communityMessage = localized("Please sign in with Apple before contributing.", "提交前请先使用 Apple 登录。")
+            communityMessage = localized("Please sign in with Apple before voting.", "投票前请先使用 Apple 登录。")
         } catch {
-            communityMessage = localized("Could not submit this update. Please try again.", "暂时无法提交，请稍后再试。")
-            print("Blacktop fact update failed: \(error)")
+            communityMessage = localized("Could not save this vote. Please try again.", "暂时无法保存投票，请稍后再试。")
+            print("Blacktop fact vote failed: \(error)")
+        }
+    }
+
+    func loadFactVotes(for court: Court) async {
+        do {
+            factVoteSummariesByCourtID[court.id] = try await supabaseCommunityService.fetchFactVoteSummaries(courtID: court.id)
+            userFactVotesByCourtID[court.id] = try await supabaseCommunityService.fetchUserFactVotes(courtID: court.id, session: contributorSession)
+        } catch {
+            print("Blacktop fact vote summary load failed: \(error)")
         }
     }
 
     func loadVibeSummaries(for court: Court) async {
         do {
             vibeSummariesByCourtID[court.id] = try await supabaseCommunityService.fetchVibeSummaries(courtID: court.id)
+            userVibeVotesByCourtID[court.id] = try await supabaseCommunityService.fetchUserVibeVotes(courtID: court.id, session: contributorSession)
         } catch {
             print("Blacktop vibe summary load failed: \(error)")
         }
@@ -201,13 +225,44 @@ final class AppStore: ObservableObject {
 
         do {
             try await supabaseCommunityService.submitVibeVote(courtID: court.id, category: category, option: option, session: contributorSession)
-            communityMessage = localized("Vote saved. Court vibe will update after review checks.", "投票已保存，球场氛围会在审核检查后更新。")
+            communityMessage = localized("Vote saved. Court vibe updated.", "投票已保存，球场氛围已更新。")
             await loadVibeSummaries(for: court)
         } catch SupabaseCommunityError.missingSession {
             communityMessage = localized("Please sign in with Apple before voting.", "投票前请先使用 Apple 登录。")
         } catch {
             communityMessage = localized("Could not save this vote. Please try again.", "暂时无法保存投票，请稍后再试。")
             print("Blacktop vibe vote failed: \(error)")
+        }
+    }
+
+    private func persistSavedCourts() {
+        UserDefaults.standard.set(Array(savedCourtIDs), forKey: savedKey)
+    }
+
+    private func syncRemoteSavedCourt(courtID: String, isSaved: Bool, session: ContributorSession) async {
+        do {
+            if isSaved {
+                try await supabaseCommunityService.saveCourt(courtID: courtID, session: session)
+            } else {
+                try await supabaseCommunityService.removeSavedCourt(courtID: courtID, session: session)
+            }
+        } catch {
+            print("Blacktop saved court sync failed: \(error)")
+        }
+    }
+
+    private func syncSavedCourtsAfterSignIn() async {
+        guard let contributorSession else { return }
+        isSyncingSavedCourts = true
+        defer { isSyncingSavedCourts = false }
+
+        do {
+            savedCourtIDs = try await supabaseCommunityService.syncSavedCourtIDs(savedCourtIDs, session: contributorSession)
+            persistSavedCourts()
+            communityMessage = localized("Signed in. Saved courts are synced.", "已登录，收藏球场已同步。")
+        } catch {
+            communityMessage = localized("Signed in. Saved courts will sync later.", "已登录，收藏球场稍后同步。")
+            print("Blacktop saved court merge failed: \(error)")
         }
     }
 
