@@ -186,16 +186,29 @@ final class AppStore: ObservableObject {
 
     func submitFactVote(for court: Court, draft: CourtFactUpdateDraft) async {
         guard draft.isReady else { return }
+        guard let session = await activeContributorSession() else {
+            communityMessage = localized("Please sign in with Apple before voting.", "投票前请先使用 Apple 登录。")
+            return
+        }
+
+        let previousSummaries = factVoteSummariesByCourtID[court.id] ?? []
+        let previousUserVotes = userFactVotesByCourtID[court.id] ?? []
+        applyOptimisticFactVote(for: court, draft: draft)
+
         isSubmittingCommunityUpdate = true
         defer { isSubmittingCommunityUpdate = false }
 
         do {
-            try await supabaseCommunityService.submitFactVote(courtID: court.id, draft: draft, session: contributorSession)
+            try await supabaseCommunityService.submitFactVote(courtID: court.id, draft: draft, session: session)
             communityMessage = localized("Vote saved. Thanks for helping other players.", "投票已保存，谢谢你帮助其他球员。")
             await loadFactVotes(for: court)
         } catch SupabaseCommunityError.missingSession {
+            factVoteSummariesByCourtID[court.id] = previousSummaries
+            userFactVotesByCourtID[court.id] = previousUserVotes
             communityMessage = localized("Please sign in with Apple before voting.", "投票前请先使用 Apple 登录。")
         } catch {
+            factVoteSummariesByCourtID[court.id] = previousSummaries
+            userFactVotesByCourtID[court.id] = previousUserVotes
             communityMessage = localized("Could not save this vote. Please try again.", "暂时无法保存投票，请稍后再试。")
             print("Blacktop fact vote failed: \(error)")
         }
@@ -203,8 +216,9 @@ final class AppStore: ObservableObject {
 
     func loadFactVotes(for court: Court) async {
         do {
+            let session = await activeContributorSession()
             factVoteSummariesByCourtID[court.id] = try await supabaseCommunityService.fetchFactVoteSummaries(courtID: court.id)
-            userFactVotesByCourtID[court.id] = try await supabaseCommunityService.fetchUserFactVotes(courtID: court.id, session: contributorSession)
+            userFactVotesByCourtID[court.id] = try await supabaseCommunityService.fetchUserFactVotes(courtID: court.id, session: session)
         } catch {
             print("Blacktop fact vote summary load failed: \(error)")
         }
@@ -212,24 +226,38 @@ final class AppStore: ObservableObject {
 
     func loadVibeSummaries(for court: Court) async {
         do {
+            let session = await activeContributorSession()
             vibeSummariesByCourtID[court.id] = try await supabaseCommunityService.fetchVibeSummaries(courtID: court.id)
-            userVibeVotesByCourtID[court.id] = try await supabaseCommunityService.fetchUserVibeVotes(courtID: court.id, session: contributorSession)
+            userVibeVotesByCourtID[court.id] = try await supabaseCommunityService.fetchUserVibeVotes(courtID: court.id, session: session)
         } catch {
             print("Blacktop vibe summary load failed: \(error)")
         }
     }
 
     func submitVibeVote(for court: Court, category: CourtVibeCategory, option: CourtVibeOption) async {
+        guard let session = await activeContributorSession() else {
+            communityMessage = localized("Please sign in with Apple before voting.", "投票前请先使用 Apple 登录。")
+            return
+        }
+
+        let previousSummaries = vibeSummariesByCourtID[court.id] ?? []
+        let previousUserVotes = userVibeVotesByCourtID[court.id] ?? []
+        applyOptimisticVibeVote(for: court, category: category, option: option)
+
         isSubmittingCommunityUpdate = true
         defer { isSubmittingCommunityUpdate = false }
 
         do {
-            try await supabaseCommunityService.submitVibeVote(courtID: court.id, category: category, option: option, session: contributorSession)
+            try await supabaseCommunityService.submitVibeVote(courtID: court.id, category: category, option: option, session: session)
             communityMessage = localized("Vote saved. Court vibe updated.", "投票已保存，球场氛围已更新。")
             await loadVibeSummaries(for: court)
         } catch SupabaseCommunityError.missingSession {
+            vibeSummariesByCourtID[court.id] = previousSummaries
+            userVibeVotesByCourtID[court.id] = previousUserVotes
             communityMessage = localized("Please sign in with Apple before voting.", "投票前请先使用 Apple 登录。")
         } catch {
+            vibeSummariesByCourtID[court.id] = previousSummaries
+            userVibeVotesByCourtID[court.id] = previousUserVotes
             communityMessage = localized("Could not save this vote. Please try again.", "暂时无法保存投票，请稍后再试。")
             print("Blacktop vibe vote failed: \(error)")
         }
@@ -264,6 +292,154 @@ final class AppStore: ObservableObject {
             communityMessage = localized("Signed in. Saved courts will sync later.", "已登录，收藏球场稍后同步。")
             print("Blacktop saved court merge failed: \(error)")
         }
+    }
+
+    private func activeContributorSession() async -> ContributorSession? {
+        guard let session = contributorSession else { return nil }
+        guard session.isExpired else { return session }
+
+        do {
+            let refreshedSession = try await supabaseCommunityService.refreshSession(session)
+            contributorSession = refreshedSession
+            return refreshedSession
+        } catch {
+            contributorSession = nil
+            userFactVotesByCourtID = [:]
+            userVibeVotesByCourtID = [:]
+            supabaseCommunityService.clearSession()
+            communityMessage = localized("Your session expired. Please sign in again.", "登录已过期，请重新登录。")
+            print("Blacktop session refresh failed: \(error)")
+            return nil
+        }
+    }
+
+    private func applyOptimisticFactVote(for court: Court, draft: CourtFactUpdateDraft) {
+        guard let newValue = draft.value else { return }
+
+        let oldVote = userFactVotesByCourtID[court.id]?.first { $0.field == draft.field }
+        if oldVote?.value == newValue { return }
+
+        var userVotes = userFactVotesByCourtID[court.id] ?? []
+        userVotes.removeAll { $0.field == draft.field }
+        userVotes.append(CourtFactUserVote(courtID: court.id, field: draft.field, value: newValue))
+        userFactVotesByCourtID[court.id] = userVotes.sorted { $0.field.rawValue < $1.field.rawValue }
+
+        var summaries = factVoteSummariesByCourtID[court.id] ?? []
+        summaries = adjustFactSummaries(
+            summaries,
+            courtID: court.id,
+            field: draft.field,
+            oldValue: oldVote?.value,
+            newValue: newValue
+        )
+        factVoteSummariesByCourtID[court.id] = summaries
+    }
+
+    private func adjustFactSummaries(
+        _ summaries: [CourtFactVoteSummary],
+        courtID: String,
+        field: CommunityFactField,
+        oldValue: String?,
+        newValue: String
+    ) -> [CourtFactVoteSummary] {
+        var summaries = summaries
+        let oldFieldTotal = summaries.first { $0.field == field }?.fieldTotal ?? 0
+        let newFieldTotal = oldValue == nil ? oldFieldTotal + 1 : oldFieldTotal
+
+        if let oldValue {
+            if let oldIndex = summaries.firstIndex(where: { $0.field == field && $0.value == oldValue }) {
+                summaries[oldIndex].voteCount = max(0, summaries[oldIndex].voteCount - 1)
+            }
+        }
+
+        if let newIndex = summaries.firstIndex(where: { $0.field == field && $0.value == newValue }) {
+            summaries[newIndex].voteCount += 1
+        } else {
+            summaries.append(CourtFactVoteSummary(
+                courtID: courtID,
+                field: field,
+                value: newValue,
+                voteCount: 1,
+                fieldTotal: newFieldTotal,
+                percentage: 100
+            ))
+        }
+
+        return summaries
+            .filter { $0.field != field || $0.voteCount > 0 }
+            .map { summary in
+                guard summary.field == field else { return summary }
+                var updated = summary
+                updated.fieldTotal = newFieldTotal
+                updated.percentage = Self.percentage(count: updated.voteCount, total: newFieldTotal)
+                return updated
+            }
+    }
+
+    private func applyOptimisticVibeVote(for court: Court, category: CourtVibeCategory, option: CourtVibeOption) {
+        let oldVote = userVibeVotesByCourtID[court.id]?.first { $0.category == category }
+        if oldVote?.option == option { return }
+
+        var userVotes = userVibeVotesByCourtID[court.id] ?? []
+        userVotes.removeAll { $0.category == category }
+        userVotes.append(CourtVibeUserVote(courtID: court.id, category: category, option: option))
+        userVibeVotesByCourtID[court.id] = userVotes.sorted { $0.category.rawValue < $1.category.rawValue }
+
+        var summaries = vibeSummariesByCourtID[court.id] ?? []
+        summaries = adjustVibeSummaries(
+            summaries,
+            courtID: court.id,
+            category: category,
+            oldOption: oldVote?.option,
+            newOption: option
+        )
+        vibeSummariesByCourtID[court.id] = summaries
+    }
+
+    private func adjustVibeSummaries(
+        _ summaries: [CourtVibeSummary],
+        courtID: String,
+        category: CourtVibeCategory,
+        oldOption: CourtVibeOption?,
+        newOption: CourtVibeOption
+    ) -> [CourtVibeSummary] {
+        var summaries = summaries
+        let oldCategoryTotal = summaries.first { $0.category == category }?.categoryTotal ?? 0
+        let newCategoryTotal = oldOption == nil ? oldCategoryTotal + 1 : oldCategoryTotal
+
+        if let oldOption {
+            if let oldIndex = summaries.firstIndex(where: { $0.category == category && $0.option == oldOption }) {
+                summaries[oldIndex].voteCount = max(0, summaries[oldIndex].voteCount - 1)
+            }
+        }
+
+        if let newIndex = summaries.firstIndex(where: { $0.category == category && $0.option == newOption }) {
+            summaries[newIndex].voteCount += 1
+        } else {
+            summaries.append(CourtVibeSummary(
+                courtID: courtID,
+                category: category,
+                option: newOption,
+                voteCount: 1,
+                categoryTotal: newCategoryTotal,
+                percentage: 100
+            ))
+        }
+
+        return summaries
+            .filter { $0.category != category || $0.voteCount > 0 }
+            .map { summary in
+                guard summary.category == category else { return summary }
+                var updated = summary
+                updated.categoryTotal = newCategoryTotal
+                updated.percentage = Self.percentage(count: updated.voteCount, total: newCategoryTotal)
+                return updated
+            }
+    }
+
+    private static func percentage(count: Int, total: Int) -> Int {
+        guard total > 0 else { return 0 }
+        return Int((Double(count) / Double(total) * 100).rounded())
     }
 
     private func mergeRemoteCourts(_ remoteCourts: [Court]) {

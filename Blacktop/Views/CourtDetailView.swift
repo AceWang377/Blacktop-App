@@ -318,7 +318,6 @@ private struct VoteTagButton: View {
                     Capsule()
                         .stroke(isSelected ? .clear : .white.opacity(0.16), lineWidth: 1)
                 }
-                .opacity(isSubmitting ? 0.62 : 1)
         }
         .buttonStyle(.plain)
         .disabled(isSubmitting)

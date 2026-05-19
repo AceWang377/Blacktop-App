@@ -56,6 +56,43 @@ struct SupabaseCommunityService {
         return session
     }
 
+    func refreshSession(_ session: ContributorSession) async throws -> ContributorSession {
+        guard let refreshToken = session.refreshToken, !refreshToken.isEmpty else {
+            throw SupabaseCommunityError.missingSession
+        }
+
+        var components = URLComponents(
+            url: SupabaseConfig.projectURL.appending(path: "/auth/v1/token"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [
+            URLQueryItem(name: "grant_type", value: "refresh_token")
+        ]
+
+        guard let url = components?.url else {
+            throw SupabaseCommunityError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(SupabaseConfig.publishableKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 14
+        request.httpBody = try JSONEncoder.snakeCase.encode(RefreshTokenRequest(refreshToken: refreshToken))
+
+        let response: SupabaseRefreshResponse = try await performDecodedRequest(request)
+        let refreshedSession = ContributorSession(
+            userID: response.user?.id ?? session.userID,
+            email: response.user?.email ?? session.email,
+            accessToken: response.accessToken,
+            refreshToken: response.refreshToken ?? session.refreshToken,
+            expiresAt: Date().addingTimeInterval(TimeInterval(response.expiresIn ?? 3600))
+        )
+        keychain.save(refreshedSession)
+        return refreshedSession
+    }
+
     func submitFactVote(courtID: String, draft: CourtFactUpdateDraft, session: ContributorSession?) async throws {
         guard let session else {
             throw SupabaseCommunityError.missingSession
@@ -311,11 +348,22 @@ private struct SignInWithIDTokenRequest: Encodable {
     var nonce: String
 }
 
+private struct RefreshTokenRequest: Encodable {
+    var refreshToken: String
+}
+
 private struct SupabaseAuthResponse: Decodable {
     var accessToken: String
     var refreshToken: String?
     var expiresIn: Int?
     var user: SupabaseAuthUser
+}
+
+private struct SupabaseRefreshResponse: Decodable {
+    var accessToken: String
+    var refreshToken: String?
+    var expiresIn: Int?
+    var user: SupabaseAuthUser?
 }
 
 private struct SupabaseAuthUser: Decodable {
