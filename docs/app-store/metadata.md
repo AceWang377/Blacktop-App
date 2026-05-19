@@ -1,6 +1,6 @@
 # Blacktop App Store Metadata
 
-Last updated: May 14, 2026
+Last updated: May 19, 2026
 
 ## App Information
 
@@ -102,5 +102,5 @@ Current required targets for this app:
 - App icon: 1024 x 1024 PNG, RGB, no alpha.
 - iPhone and iPad support: enabled.
 - Version: 1.0.
-- Build: 1.
+- Build: 2.
 - Location purpose string: describes centering the map on nearby basketball courts and says location is not stored.

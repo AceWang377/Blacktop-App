@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #020806;
+        font-family: "IBM Plex Mono", "Montserrat", system-ui, sans-serif;
+        color: #f4fff0;
+      }
+
+      #root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 76% 12%, rgba(155, 243, 90, 0.18), rgba(155, 243, 90, 0) 28%),
+          radial-gradient(circle at 13% 83%, rgba(0, 63, 36, 0.82), rgba(0, 63, 36, 0) 32%),
+          #020806;
+      }
+
+      .texture {
+        position: absolute;
+        inset: 0;
+        opacity: 0.11;
+        background-image:
+          linear-gradient(rgba(244, 255, 240, 0.08) 1px, rgba(244, 255, 240, 0) 1px),
+          linear-gradient(90deg, rgba(244, 255, 240, 0.08) 1px, rgba(244, 255, 240, 0) 1px);
+        background-size: 72px 72px;
+      }
+
+      .orbit {
+        position: absolute;
+        width: 760px;
+        height: 760px;
+        border: 5px solid rgba(155, 243, 90, 0.18);
+        border-radius: 999px;
+        right: -310px;
+        top: -210px;
+      }
+
+      .orbit.small {
+        width: 430px;
+        height: 430px;
+        left: -180px;
+        bottom: 260px;
+        border-color: rgba(244, 255, 240, 0.11);
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        padding: 98px 64px 86px;
+        background-color: #020806;
+        overflow: hidden;
+      }
+
+      .brand-row {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+      }
+
+      .logo {
+        width: 106px;
+        height: 106px;
+        border-radius: 26px;
+        box-shadow: 0 0 44px rgba(155, 243, 90, 0.28);
+      }
+
+      .brand-name {
+        font-family: "Montserrat", system-ui, sans-serif;
+        font-size: 58px;
+        letter-spacing: 0;
+      }
+
+      .headline {
+        font-family: "Montserrat", system-ui, sans-serif;
+        font-size: 92px;
+        line-height: 0.98;
+        letter-spacing: 0;
+        max-width: 920px;
+      }
+
+      .subhead {
+        color: #eef9eb;
+        font-size: 35px;
+        line-height: 1.24;
+        font-weight: 700;
+        max-width: 820px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 68px;
+        padding: 0 30px;
+        border-radius: 999px;
+        background: rgba(155, 243, 90, 0.16);
+        border: 2px solid rgba(155, 243, 90, 0.42);
+        color: #dfffca;
+        font-size: 28px;
+        font-weight: 800;
+      }
+
+      .phone {
+        position: relative;
+        width: 618px;
+        height: 1338px;
+        border-radius: 76px;
+        padding: 18px;
+        background: linear-gradient(145deg, rgba(244, 255, 240, 0.42), rgba(155, 243, 90, 0.18));
+        box-shadow: 0 34px 100px rgba(0, 0, 0, 0.62), 0 0 70px rgba(155, 243, 90, 0.18);
+      }
+
+      .phone::before {
+        content: "";
+        position: absolute;
+        width: 204px;
+        height: 54px;
+        border-radius: 999px;
+        background: #020806;
+        left: 50%;
+        top: 34px;
+        transform: translateX(-50%);
+        z-index: 2;
+      }
+
+      .phone img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 60px;
+        display: block;
+      }
+
+      .card {
+        border: 2px solid rgba(244, 255, 240, 0.12);
+        background: rgba(7, 17, 13, 0.82);
+        border-radius: 44px;
+        padding: 32px;
+        box-shadow: 0 26px 90px rgba(0, 0, 0, 0.36);
+      }
+
+      .stat {
+        font-family: "Montserrat", system-ui, sans-serif;
+        font-size: 64px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .label {
+        color: #aeb9ae;
+        font-size: 25px;
+        font-weight: 800;
+      }
+
+      .map-bg {
+        position: absolute;
+        inset: -80px -180px;
+        opacity: 0.22;
+        filter: saturate(0.82) brightness(0.72);
+      }
+
+      .map-bg img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .court-art {
+        position: absolute;
+        width: 910px;
+        height: 910px;
+        right: -220px;
+        bottom: -110px;
+        opacity: 0.2;
+        border-radius: 80px;
+        overflow: hidden;
+      }
+
+      .court-art img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .scene-one {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .scene-one .headline {
+        font-size: 108px;
+      }
+
+      .scene-one .bottom-row {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+
+      .scene-two,
+      .scene-three,
+      .scene-four,
+      .scene-five {
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 32px;
+      }
+
+      .top-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        z-index: 4;
+      }
+
+      .device-wrap {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 3;
+      }
+
+      .scene-two .phone {
+        transform: rotate(-4deg);
+      }
+
+      .scene-three .phone {
+        transform: rotate(3deg);
+      }
+
+      .scene-four .phone {
+        transform: rotate(-2deg);
+      }
+
+      .scene-five .phone {
+        transform: rotate(2deg);
+      }
+
+      .fact-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        z-index: 4;
+      }
+
+      .fact-row .pill {
+        background: rgba(244, 255, 240, 0.1);
+        color: #f4fff0;
+      }
+
+      .accent-card {
+        position: absolute;
+        width: 360px;
+        right: 48px;
+        bottom: 260px;
+        z-index: 5;
+      }
+
+      .accent-card.left {
+        left: 44px;
+        right: auto;
+        bottom: 230px;
+      }
+
+      .accent-card .stat {
+        color: #9bf35a;
+      }
+
+      .closing {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 42px;
+        z-index: 5;
+      }
+
+      .closing-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+      }
+
+      .cta {
+        min-height: 108px;
+        border-radius: 999px;
+        background: #c6ff7c;
+        color: #000c07;
+        font-family: "Montserrat", system-ui, sans-serif;
+        font-size: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 60px rgba(155, 243, 90, 0.26);
+      }
+
+      .fade {
+        position: absolute;
+        inset: 0;
+        background: #020806;
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="18"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div class="texture" data-layout-ignore></div>
+      <div class="orbit" data-layout-ignore></div>
+      <div class="orbit small" data-layout-ignore></div>
+
+      <section id="scene-1" class="clip scene scene-one" data-start="0" data-duration="3.5" data-track-index="1">
+        <div class="brand-row s1-brand">
+          <img class="logo" src="assets/logo.png" alt="" />
+          <div class="brand-name">Blacktop</div>
+        </div>
+        <div class="top-copy">
+          <h1 class="headline s1-title">Know the court before you leave.</h1>
+          <p class="subhead s1-copy">Find basketball courts with practical facts, not ratings.</p>
+        </div>
+        <div class="bottom-row s1-pills">
+          <span class="pill">No account</span>
+          <span class="pill">Court facts</span>
+          <span class="pill">Fast map</span>
+        </div>
+        <div class="court-art" data-layout-ignore>
+          <img src="assets/court-art.png" alt="" />
+        </div>
+      </section>
+
+      <section id="scene-2" class="clip scene scene-two" data-start="3.05" data-duration="4.1" data-track-index="2">
+        <div class="top-copy">
+          <h2 class="headline s2-title">Find courts around you.</h2>
+          <p class="subhead s2-copy">Open the map and see nearby courts at a glance.</p>
+        </div>
+        <div class="device-wrap">
+          <div class="phone s2-phone">
+            <img src="assets/iphone-map.png" alt="" />
+          </div>
+          <div class="card accent-card s2-card">
+            <div class="stat">285k+</div>
+            <div class="label">court records</div>
+          </div>
+        </div>
+        <div class="fact-row s2-facts">
+          <span class="pill">Nearby</span>
+          <span class="pill">Search areas</span>
+          <span class="pill">Open in Maps</span>
+        </div>
+      </section>
+
+      <section id="scene-3" class="clip scene scene-three" data-start="6.75" data-duration="4.1" data-track-index="3">
+        <div class="top-copy">
+          <h2 class="headline s3-title">Filter by facts.</h2>
+          <p class="subhead s3-copy">Outdoor, indoor, lights, dry surface, nets, and rim details.</p>
+        </div>
+        <div class="device-wrap">
+          <div class="phone s3-phone">
+            <img src="assets/iphone-filters.png" alt="" />
+          </div>
+          <div class="card accent-card left s3-card">
+            <div class="stat">facts</div>
+            <div class="label">instead of star ratings</div>
+          </div>
+        </div>
+        <div class="fact-row s3-facts">
+          <span class="pill">Lights</span>
+          <span class="pill">Nets</span>
+          <span class="pill">Dry surface</span>
+        </div>
+      </section>
+
+      <section id="scene-4" class="clip scene scene-four" data-start="10.45" data-duration="4.1" data-track-index="4">
+        <div class="top-copy">
+          <h2 class="headline s4-title">Check the details.</h2>
+          <p class="subhead s4-copy">Review access, conditions, facilities, and directions before you travel.</p>
+        </div>
+        <div class="device-wrap">
+          <div class="phone s4-phone">
+            <img src="assets/iphone-details.png" alt="" />
+          </div>
+          <div class="card accent-card s4-card">
+            <div class="stat">Save</div>
+            <div class="label">courts locally on device</div>
+          </div>
+        </div>
+        <div class="fact-row s4-facts">
+          <span class="pill">Court details</span>
+          <span class="pill">Directions</span>
+          <span class="pill">Local saves</span>
+        </div>
+      </section>
+
+      <section id="scene-5" class="clip scene scene-five" data-start="14.05" data-duration="3.95" data-track-index="5">
+        <div class="map-bg" data-layout-ignore>
+          <img src="assets/ipad-map.png" alt="" />
+        </div>
+        <div class="closing">
+          <div class="brand-row s5-brand">
+            <img class="logo" src="assets/logo-outro.png" alt="" />
+            <div class="brand-name">Blacktop</div>
+          </div>
+          <div class="closing-stack">
+            <h2 class="headline s5-title">Basketball court finder.</h2>
+            <p class="subhead s5-copy">Browse without an account. Save courts on your device.</p>
+            <div class="cta s5-cta">Download on the App Store</div>
+          </div>
+          <div class="fact-row s5-facts">
+            <span class="pill">Map</span>
+            <span class="pill">Filters</span>
+            <span class="pill">Details</span>
+            <span class="pill">Saved courts</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="fade"></div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.to(".orbit", { rotation: 18, scale: 1.035, duration: 6, ease: "sine.inOut", repeat: 2, yoyo: true }, 0);
+      tl.to(".orbit.small", { rotation: -15, scale: 1.04, duration: 5, ease: "sine.inOut", repeat: 3, yoyo: true }, 0);
+
+      tl.from(".s1-brand", { y: 36, opacity: 0, duration: 0.55, ease: "power3.out" }, 0.18);
+      tl.from(".s1-title", { y: 70, opacity: 0, scale: 0.98, duration: 0.75, ease: "expo.out" }, 0.48);
+      tl.from(".s1-copy", { y: 32, opacity: 0, duration: 0.5, ease: "power2.out" }, 0.95);
+      tl.from(".s1-pills .pill", { y: 30, opacity: 0, scale: 0.94, duration: 0.45, stagger: 0.09, ease: "back.out(1.45)" }, 1.28);
+      tl.from(".court-art", { opacity: 0, scale: 0.88, rotation: -5, duration: 0.9, ease: "power2.out" }, 0.6);
+
+      tl.from("#scene-2", { opacity: 0, y: 72, duration: 0.45, ease: "power3.out" }, 3.05);
+      tl.from(".s2-title", { y: 50, opacity: 0, duration: 0.55, ease: "expo.out" }, 3.22);
+      tl.from(".s2-copy", { y: 30, opacity: 0, duration: 0.42, ease: "power2.out" }, 3.54);
+      tl.from(".s2-phone", { y: 90, opacity: 0, scale: 0.88, rotation: -9, duration: 0.74, ease: "back.out(1.35)" }, 3.72);
+      tl.from(".s2-card", { x: 90, opacity: 0, scale: 0.9, duration: 0.5, ease: "power4.out" }, 4.22);
+      tl.from(".s2-facts .pill", { y: 24, opacity: 0, duration: 0.36, stagger: 0.08, ease: "power2.out" }, 4.55);
+
+      tl.from("#scene-3", { opacity: 0, y: 76, duration: 0.45, ease: "power3.out" }, 6.75);
+      tl.from(".s3-title", { y: 50, opacity: 0, duration: 0.55, ease: "expo.out" }, 6.92);
+      tl.from(".s3-copy", { y: 30, opacity: 0, duration: 0.42, ease: "power2.out" }, 7.24);
+      tl.from(".s3-phone", { y: 90, opacity: 0, scale: 0.88, rotation: 8, duration: 0.74, ease: "back.out(1.35)" }, 7.42);
+      tl.from(".s3-card", { x: -80, opacity: 0, scale: 0.92, duration: 0.48, ease: "power4.out" }, 7.92);
+      tl.from(".s3-facts .pill", { y: 24, opacity: 0, duration: 0.36, stagger: 0.08, ease: "power2.out" }, 8.28);
+
+      tl.from("#scene-4", { opacity: 0, y: 76, duration: 0.45, ease: "power3.out" }, 10.45);
+      tl.from(".s4-title", { y: 50, opacity: 0, duration: 0.55, ease: "expo.out" }, 10.62);
+      tl.from(".s4-copy", { y: 30, opacity: 0, duration: 0.42, ease: "power2.out" }, 10.94);
+      tl.from(".s4-phone", { y: 90, opacity: 0, scale: 0.88, rotation: -7, duration: 0.74, ease: "back.out(1.35)" }, 11.12);
+      tl.from(".s4-card", { x: 88, opacity: 0, scale: 0.9, duration: 0.5, ease: "power4.out" }, 11.64);
+      tl.from(".s4-facts .pill", { y: 24, opacity: 0, duration: 0.36, stagger: 0.08, ease: "power2.out" }, 12.02);
+
+      tl.from("#scene-5", { opacity: 0, scale: 1.02, duration: 0.55, ease: "sine.out" }, 14.05);
+      tl.from(".s5-brand", { y: 36, opacity: 0, duration: 0.5, ease: "power3.out" }, 14.22);
+      tl.from(".s5-title", { y: 62, opacity: 0, scale: 0.98, duration: 0.7, ease: "expo.out" }, 14.58);
+      tl.from(".s5-copy", { y: 32, opacity: 0, duration: 0.46, ease: "power2.out" }, 15.08);
+      tl.from(".s5-cta", { y: 36, opacity: 0, scale: 0.94, duration: 0.55, ease: "back.out(1.55)" }, 15.42);
+      tl.from(".s5-facts .pill", { y: 24, opacity: 0, duration: 0.36, stagger: 0.07, ease: "power2.out" }, 15.76);
+      tl.to(".fade", { opacity: 1, duration: 0.65, ease: "sine.inOut" }, 17.35);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

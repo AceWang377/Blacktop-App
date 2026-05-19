@@ -11,7 +11,7 @@ struct AboutDataView: View {
                         Text(store.localized("About the data", "关于数据"))
                             .font(.system(size: 38, weight: .black, design: .rounded))
                             .foregroundStyle(.white)
-                        Text(store.localized("Blacktop combines public map records, trusted datasets, and manual court checks.", "Blacktop 结合公开地图记录、可信数据集和人工球场检查。"))
+                        Text(store.localized("Blacktop combines public map records and manual court checks.", "Blacktop 结合公开地图记录和人工球场检查。"))
                             .font(.body.weight(.medium))
                             .foregroundStyle(.white.opacity(0.66))
                     }
@@ -24,8 +24,7 @@ struct AboutDataView: View {
                     SectionCard(title: store.localized("Sources", "来源")) {
                         VStack(alignment: .leading, spacing: 12) {
                             FactRow(title: "OSM", value: "OpenStreetMap contributors")
-                            FactRow(title: "Map POI", value: store.localized("Provider search candidates", "地图服务候选地点"))
-                            FactRow(title: "Active", value: "Sport England Active Places")
+                            FactRow(title: store.localized("Map records", "地图记录"), value: store.localized("Public court candidates", "公开球场候选数据"))
                             FactRow(title: store.localized("Manual", "人工"), value: store.localized("Blacktop checks", "Blacktop 检查"))
                         }
                     }
