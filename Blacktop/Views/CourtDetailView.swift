@@ -5,6 +5,8 @@ struct CourtDetailView: View {
     @EnvironmentObject private var store: AppStore
     @Environment(\.dismiss) private var dismiss
     let court: Court
+    @State private var isShowingFactUpdateSheet = false
+    @State private var isShowingVibeVoteSheet = false
 
     var body: some View {
         NavigationStack {
@@ -12,6 +14,9 @@ struct CourtDetailView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     header
                     quickFacts
+                    courtVibe
+                    bestFor
+                    communityUpdate
                     locationFacts
                     playingConditions
                     rimAndHoop
@@ -27,6 +32,19 @@ struct CourtDetailView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(store.localized("Close", "关闭")) { dismiss() }
                 }
+            }
+            .task(id: court.id) {
+                await store.loadVibeSummaries(for: court)
+            }
+            .sheet(isPresented: $isShowingFactUpdateSheet) {
+                CourtFactUpdateSheetView(court: court)
+                    .environmentObject(store)
+                    .presentationDetents([.medium, .large])
+            }
+            .sheet(isPresented: $isShowingVibeVoteSheet) {
+                CourtVibeVoteSheetView(court: court)
+                    .environmentObject(store)
+                    .presentationDetents([.medium, .large])
             }
             .safeAreaInset(edge: .bottom) {
                 HStack(spacing: 12) {
@@ -108,6 +126,70 @@ struct CourtDetailView: View {
         }
     }
 
+    private var courtVibe: some View {
+        SectionCard(title: store.localized("Court vibe", "球场氛围")) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text(store.localized("Community votes describe the usual run style here, not live occupancy.", "社区投票展示这里平时的打球氛围，不代表实时人数。"))
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.62))
+
+                let summaries = store.vibeSummariesByCourtID[court.id] ?? []
+                if summaries.isEmpty {
+                    FactChip(label: store.localized("Waiting for votes", "等待投票"), tone: .unknown)
+                } else {
+                    VStack(spacing: 12) {
+                        ForEach(CourtVibeCategory.allCases) { category in
+                            if let summary = topVibeSummary(for: category, from: summaries) {
+                                vibeSummaryRow(summary)
+                            }
+                        }
+                    }
+                }
+
+                Button {
+                    isShowingVibeVoteSheet = true
+                } label: {
+                    Label(store.localized("Vote court vibe", "投票球场氛围"), systemImage: "slider.horizontal.3")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SecondaryButtonStyle())
+            }
+        }
+    }
+
+    private var bestFor: some View {
+        SectionCard(title: store.localized("Best for", "适合用途")) {
+            FlowLayout(spacing: 8) {
+                ForEach(bestForSignals, id: \.label) { fact in
+                    FactChip(label: fact.label, tone: fact.tone)
+                }
+            }
+        }
+    }
+
+    private var communityUpdate: some View {
+        SectionCard(title: store.localized("Know this court?", "熟悉这个球场？")) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(store.localized("Help complete practical facts like nets, lights, rain impact, rim height and facilities. Sign in is only required when you submit.", "帮助补全篮网、灯光、雨后状态、篮筐高度和设施等实用信息。只有提交时需要登录。"))
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.62))
+
+                HStack(spacing: 10) {
+                    FactChip(label: missingFactsLabel, tone: missingFactsCount == 0 ? .positive : .unknown)
+                    Spacer()
+                }
+
+                Button {
+                    isShowingFactUpdateSheet = true
+                } label: {
+                    Label(store.localized("Update a fact", "更新一个事实"), systemImage: "checklist")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SecondaryButtonStyle())
+            }
+        }
+    }
+
     private var locationFacts: some View {
         SectionCard(title: store.localized("Location", "位置")) {
             FactRow(title: store.localized("Area", "区域"), value: court.area)
@@ -157,6 +239,81 @@ struct CourtDetailView: View {
             FactRow(title: store.localized("Water", "饮水"), value: court.hasDrinkingWater.displayName(store.appLanguage))
             FactRow(title: store.localized("Parking", "停车"), value: court.hasParking.displayName(store.appLanguage))
             FactRow(title: store.localized("Changing", "更衣"), value: court.hasChangingRooms.displayName(store.appLanguage))
+        }
+    }
+
+    private var bestForSignals: [CourtFact] {
+        var facts: [CourtFact] = []
+        if court.goodForSolo == .yes {
+            facts.append(CourtFact(label: store.localized("Solo shooting", "适合投篮"), tone: .positive))
+        }
+        if court.goodForPickup == .yes {
+            facts.append(CourtFact(label: store.localized("Pickup runs", "适合野球"), tone: .positive))
+        }
+        if court.goodForTraining == .yes {
+            facts.append(CourtFact(label: store.localized("Training", "训练"), tone: .positive))
+        }
+        if court.beginnerFriendly == .yes {
+            facts.append(CourtFact(label: store.localized("Beginner friendly", "新手友好"), tone: .positive))
+        }
+        if court.courtSpace == .spacious {
+            facts.append(CourtFact(label: store.localized("Good space", "空间充足"), tone: .positive))
+        }
+        if facts.isEmpty {
+            facts.append(CourtFact(label: store.localized("Use facts pending", "用途信息待补充"), tone: .unknown))
+        }
+        return facts
+    }
+
+    private var missingFactsCount: Int {
+        [
+            court.hasLights == .unknown,
+            court.drynessAfterRain == .unknown,
+            court.rainPlayable == .unknown,
+            court.surfaceType == .unknown,
+            court.courtSpace == .unknown,
+            court.hasNets == .unknown,
+            court.rimHeight == .unknown,
+            court.hasToilets == .unknown,
+            court.hasDrinkingWater == .unknown,
+            court.hasParking == .unknown
+        ].filter { $0 }.count
+    }
+
+    private var missingFactsLabel: String {
+        missingFactsCount == 0
+            ? store.localized("Core facts complete", "核心信息已补全")
+            : store.localized("\(missingFactsCount) facts need help", "\(missingFactsCount) 项信息待补充")
+    }
+
+    private func topVibeSummary(for category: CourtVibeCategory, from summaries: [CourtVibeSummary]) -> CourtVibeSummary? {
+        summaries
+            .filter { $0.category == category }
+            .sorted {
+                if $0.voteCount == $1.voteCount { return $0.option.rawValue < $1.option.rawValue }
+                return $0.voteCount > $1.voteCount
+            }
+            .first
+    }
+
+    private func vibeSummaryRow(_ summary: CourtVibeSummary) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(summary.category.title(store.appLanguage))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.82))
+                Spacer()
+                Text(summary.option.label(store.appLanguage))
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.white)
+            }
+
+            ProgressView(value: Double(summary.percentage), total: 100)
+                .tint(summary.option.tone == .warning ? HLColor.basketballOrange : HLColor.freshGreen)
+
+            Text(store.localized("\(summary.voteCount) of \(summary.categoryTotal) votes", "\(summary.categoryTotal) 票中的 \(summary.voteCount) 票"))
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.50))
         }
     }
 

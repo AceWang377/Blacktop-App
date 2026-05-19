@@ -18,6 +18,10 @@ final class AppStore: ObservableObject {
     @Published var courtDataSource = "Local seed"
     @Published var isLoadingRemoteCourts = false
     @Published var countrySummaries: [CountryCourtSummary] = []
+    @Published var contributorSession: ContributorSession?
+    @Published var communityMessage: String?
+    @Published var isSubmittingCommunityUpdate = false
+    @Published var vibeSummariesByCourtID: [String: [CourtVibeSummary]] = [:]
 
     private let savedKey = "blacktop.savedCourts"
     private let onboardingKey = "blacktop.hasCompletedOnboarding"
@@ -29,6 +33,7 @@ final class AppStore: ObservableObject {
     private let adminPasscode = "BLACKTOP-ADMIN"
     #endif
     private let supabaseCourtService = SupabaseCourtService()
+    private let supabaseCommunityService = SupabaseCommunityService()
     private var loadedRemoteRegions: [MKCoordinateRegion] = []
     private var remoteLoadGeneration = 0
 
@@ -46,6 +51,7 @@ final class AppStore: ObservableObject {
         self.courtDataSource = cachedCourts == nil ? "Local seed" : "Cached courts"
         let saved = UserDefaults.standard.stringArray(forKey: savedKey) ?? []
         self.savedCourtIDs = Set(saved)
+        self.contributorSession = supabaseCommunityService.restoreSession()
     }
 
     var filteredCourts: [Court] {
@@ -146,6 +152,62 @@ final class AppStore: ObservableObject {
             countrySummaries = try await supabaseCourtService.fetchCountrySummaries()
         } catch {
             print("Blacktop country summary load failed: \(error)")
+        }
+    }
+
+    func signInWithApple(identityToken: String, nonce: String) async {
+        do {
+            contributorSession = try await supabaseCommunityService.signInWithApple(identityToken: identityToken, nonce: nonce)
+            communityMessage = localized("Signed in. You can now contribute court facts.", "已登录，可以提交球场信息。")
+        } catch {
+            communityMessage = localized("Sign in failed. Please try again.", "登录失败，请再试一次。")
+            print("Blacktop Apple sign in failed: \(error)")
+        }
+    }
+
+    func signOutContributor() {
+        contributorSession = nil
+        supabaseCommunityService.clearSession()
+        communityMessage = localized("Signed out.", "已退出登录。")
+    }
+
+    func submitFactUpdate(for court: Court, draft: CourtFactUpdateDraft) async {
+        guard draft.isReady else { return }
+        isSubmittingCommunityUpdate = true
+        defer { isSubmittingCommunityUpdate = false }
+
+        do {
+            try await supabaseCommunityService.submitFactUpdate(courtID: court.id, draft: draft, session: contributorSession)
+            communityMessage = localized("Thanks. Your update is waiting for review.", "谢谢，信息已提交等待审核。")
+        } catch SupabaseCommunityError.missingSession {
+            communityMessage = localized("Please sign in with Apple before contributing.", "提交前请先使用 Apple 登录。")
+        } catch {
+            communityMessage = localized("Could not submit this update. Please try again.", "暂时无法提交，请稍后再试。")
+            print("Blacktop fact update failed: \(error)")
+        }
+    }
+
+    func loadVibeSummaries(for court: Court) async {
+        do {
+            vibeSummariesByCourtID[court.id] = try await supabaseCommunityService.fetchVibeSummaries(courtID: court.id)
+        } catch {
+            print("Blacktop vibe summary load failed: \(error)")
+        }
+    }
+
+    func submitVibeVote(for court: Court, category: CourtVibeCategory, option: CourtVibeOption) async {
+        isSubmittingCommunityUpdate = true
+        defer { isSubmittingCommunityUpdate = false }
+
+        do {
+            try await supabaseCommunityService.submitVibeVote(courtID: court.id, category: category, option: option, session: contributorSession)
+            communityMessage = localized("Vote saved. Court vibe will update after review checks.", "投票已保存，球场氛围会在审核检查后更新。")
+            await loadVibeSummaries(for: court)
+        } catch SupabaseCommunityError.missingSession {
+            communityMessage = localized("Please sign in with Apple before voting.", "投票前请先使用 Apple 登录。")
+        } catch {
+            communityMessage = localized("Could not save this vote. Please try again.", "暂时无法保存投票，请稍后再试。")
+            print("Blacktop vibe vote failed: \(error)")
         }
     }
 

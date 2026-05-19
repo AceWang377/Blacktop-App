@@ -28,6 +28,9 @@
 		AA0000010000000000000013 /* AdminCourtEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000010000000000000113 /* AdminCourtEditorView.swift */; };
 		AA0000010000000000000014 /* SupabaseCourtService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000010000000000000114 /* SupabaseCourtService.swift */; };
 		AA0000010000000000000015 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000010000000000000115 /* Localization.swift */; };
+		AA0000010000000000000016 /* CommunityModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000010000000000000116 /* CommunityModels.swift */; };
+		AA0000010000000000000017 /* SupabaseCommunityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000010000000000000117 /* SupabaseCommunityService.swift */; };
+		AA0000010000000000000018 /* CommunityContributionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000010000000000000118 /* CommunityContributionViews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -53,6 +56,10 @@
 		AA0000010000000000000113 /* AdminCourtEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminCourtEditorView.swift; sourceTree = "<group>"; };
 		AA0000010000000000000114 /* SupabaseCourtService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseCourtService.swift; sourceTree = "<group>"; };
 		AA0000010000000000000115 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
+		AA0000010000000000000116 /* CommunityModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunityModels.swift; sourceTree = "<group>"; };
+		AA0000010000000000000117 /* SupabaseCommunityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseCommunityService.swift; sourceTree = "<group>"; };
+		AA0000010000000000000118 /* CommunityContributionViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunityContributionViews.swift; sourceTree = "<group>"; };
+		AA0000010000000000000119 /* Blacktop.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Blacktop.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,6 +85,7 @@
 			isa = PBXGroup;
 			children = (
 				AA0000010000000000000101 /* BlacktopApp.swift */,
+				AA0000010000000000000119 /* Blacktop.entitlements */,
 				AA0000010000000000000310 /* Models */,
 				AA0000010000000000000311 /* Data */,
 				AA0000010000000000000312 /* Components */,
@@ -102,6 +110,7 @@
 				AA0000010000000000000102 /* Court.swift */,
 				AA0000010000000000000103 /* AppStore.swift */,
 				AA0000010000000000000115 /* Localization.swift */,
+				AA0000010000000000000116 /* CommunityModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -111,6 +120,7 @@
 			children = (
 				AA0000010000000000000104 /* CourtSeedStore.swift */,
 				AA0000010000000000000114 /* SupabaseCourtService.swift */,
+				AA0000010000000000000117 /* SupabaseCommunityService.swift */,
 			);
 			path = Data;
 			sourceTree = "<group>";
@@ -138,6 +148,7 @@
 				AA000001000000000000010F /* AboutDataView.swift */,
 				AA0000010000000000000112 /* ProfileView.swift */,
 				AA0000010000000000000113 /* AdminCourtEditorView.swift */,
+				AA0000010000000000000118 /* CommunityContributionViews.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -240,6 +251,9 @@
 				AA0000010000000000000013 /* AdminCourtEditorView.swift in Sources */,
 				AA0000010000000000000014 /* SupabaseCourtService.swift in Sources */,
 				AA0000010000000000000015 /* Localization.swift in Sources */,
+				AA0000010000000000000016 /* CommunityModels.swift in Sources */,
+				AA0000010000000000000017 /* SupabaseCommunityService.swift in Sources */,
+				AA0000010000000000000018 /* CommunityContributionViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -250,6 +264,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Blacktop/Blacktop.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "";
@@ -276,6 +291,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Blacktop/Blacktop.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "";
