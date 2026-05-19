@@ -77,6 +77,25 @@ The realtime court heat bar can be reconsidered for v3 after contribution qualit
 
 ## 7. V2 Feature Scope
 
+### 7.0 V2 Refinement Decisions After First Device Test
+
+After the first real-device test of the V2 foundation, the following changes are accepted into V2 scope:
+
+1. Profile owns account entry
+   Sign in with Apple should appear as a formal account section inside Profile. Contribution sheets may still show a compact sign-in prompt when needed, but Profile is the primary place for sign in, sign out, sync status, and account wording.
+
+2. Saved courts should remain local when signed out and sync when signed in
+   Signed-out users keep the v1 behaviour: saved courts stay on the device. After Sign in with Apple, local saved courts should be merged into the user's Supabase saved list. Future save/unsave actions should update both local state and Supabase.
+
+3. Vibe voting must show personal feedback immediately
+   Public court vibe aggregates should still require enough votes before display, but the signed-in voter should immediately see their own saved vote. This prevents the flow from feeling like a fake action when there are fewer than 3 public votes.
+
+4. Admin approval writes approved facts into `courts`
+   Normal users submit structured fact updates into a pending table. Admin users can approve or reject those updates. Approval should update the corresponding approved field in `courts` through a controlled Supabase RPC and create an audit record.
+
+5. Search and directions should be completed before V2 release
+   Search should provide clearer feedback after city/area/postcode/court lookup, and directions should support Apple Maps, Google Maps, copy address/postcode, and copy coordinates.
+
 ### 7.1 Light Sign in with Apple
 
 #### Purpose
