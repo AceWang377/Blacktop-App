@@ -36,11 +36,11 @@ V2 should not become a basketball social app. It should remain a fast court util
 3. Facts and structured signals over opinions
    V2 still avoids star ratings, vague comments, public reviews, rankings, and social feeds. If a subjective signal is useful, such as court playing intensity, it should be structured, lightweight, and aggregated.
 
-4. Contributions are reviewed before publishing
-   User submissions should enter a pending table. They should not directly overwrite public court data.
+4. Contributions become vote-backed factual signals
+   User submissions should be stored as structured votes on factual labels. They should not directly overwrite public court data. The UI should show the label plus vote count so users can judge confidence themselves.
 
 5. Trust should feel natural
-   The app should avoid heavy labels like "verified" or "unverified" on main user surfaces. Instead, use lightweight freshness and completeness cues, such as "Updated this month" or "Needs more court facts."
+   The app should avoid heavy labels like "verified" or "unverified" on main user surfaces. Instead, show transparent community signal counts, such as "Nets · 14" or "Dries fast · 8", without claiming absolute truth.
 
 6. More useful, not more complicated
    Each v2 addition must help users decide whether to go to a court.
@@ -48,8 +48,8 @@ V2 should not become a basketball social app. It should remain a fast court util
 ## 5. V2 Goals
 
 - Add light Sign in with Apple for contribution flows.
-- Let users submit structured court fact updates.
-- Give Blacktop an admin review path before public data changes.
+- Let users vote on structured court fact labels.
+- Give Blacktop an admin control path for spam, abuse, and base court record maintenance.
 - Improve court details into a faster checklist-style decision surface.
 - Add practical "Best for" tags derived from existing facts.
 - Add court vibe/intensity voting so players can understand whether a court usually feels casual, mixed, or competitive.
@@ -87,11 +87,11 @@ After the first real-device test of the V2 foundation, the following changes are
 2. Saved courts should remain local when signed out and sync when signed in
    Signed-out users keep the v1 behaviour: saved courts stay on the device. After Sign in with Apple, local saved courts should be merged into the user's Supabase saved list. Future save/unsave actions should update both local state and Supabase.
 
-3. Vibe voting must show personal feedback immediately
-   Public court vibe aggregates should still require enough votes before display, but the signed-in voter should immediately see their own saved vote. This prevents the flow from feeling like a fake action when there are fewer than 3 public votes.
+3. Voting must show visible counts immediately
+   After a user votes on court vibe or court facts, the relevant label should show a vote count. The app should not hide all results behind a threshold because that makes the action feel fake. Users can judge signal confidence from the count themselves.
 
-4. Admin approval writes approved facts into `courts`
-   Normal users submit structured fact updates into a pending table. Admin users can approve or reject those updates. Approval should update the corresponding approved field in `courts` through a controlled Supabase RPC and create an audit record.
+4. Court facts should move from admin-approved truth to community-backed labels
+   Admin users may still maintain base court records, remove abusive data, and hide suspicious votes, but most court detail improvements should be represented as structured labels with vote counts rather than admin-approved absolute facts. This avoids pretending that an admin can reliably verify every court globally.
 
 5. Search and directions should be completed before V2 release
    Search should provide clearer feedback after city/area/postcode/court lookup, and directions should support Apple Maps, Google Maps, copy address/postcode, and copy coordinates.
@@ -130,21 +130,23 @@ Store only what is needed:
 
 Do not require public usernames, avatars, bios, or profile pages.
 
-### 7.2 User Court Fact Updates
+### 7.2 User Court Fact Signals
 
 #### Purpose
 
-Let players improve court records through structured factual updates.
+Let players improve court usefulness through structured factual label votes.
+
+The product should not pretend that every contributed fact is admin-verified truth. For many details, such as whether the court stays dry, has nets, feels spacious, or is clean, the most honest first version is a community-backed signal with a visible count.
 
 #### Entry Points
 
 - Court detail page: "Know this court?"
-- Missing facts prompt: "Help add missing facts"
+- Missing facts prompt: "Vote on court facts"
 - Profile page: lightweight contribution history, optional after v2.0
 
 #### Submission Format
 
-Use structured fields, not open-ended reviews.
+Use structured labels, not open-ended reviews.
 
 Possible categories:
 
@@ -161,49 +163,68 @@ Possible categories:
 - Space: tight / normal / spacious / unknown
 - Cleanliness: clean / okay / dirty / unknown
 - Facilities: toilet / water / parking / changing rooms
-- Opening/access note: short optional text
+- Opening/access note: not recommended for V2 unless admin-managed, because free text creates moderation burden
 
-#### Moderation Rule
+#### Display Rule
 
-Submissions do not directly update `courts`.
+Fact votes do not directly update `courts`.
 
-They should be stored in a pending table and reviewed by Blacktop admin before being merged.
+They should be stored in a fact vote table and displayed as labels with counts.
+
+Example:
+
+```text
+Nets · 14
+Dries fast · 8
+Double rim · 6
+Clean · 5
+```
+
+The number is part of the trust model. A label with 1 vote is useful but weak. A label with 30 votes is stronger. The app should let users interpret this rather than hiding all low-count signals.
+
+#### Admin Role
+
+Admin should not be required to decide whether every fact vote is true. Admin controls should focus on:
+
+- Removing abusive or impossible votes.
+- Hiding suspicious labels.
+- Maintaining base court identity, coordinates, address, and duplicate cleanup.
+- Manually editing `courts` only when the owner has first-hand knowledge or a reliable source.
 
 #### Submission UX
 
 The flow should be short:
 
-1. User taps "Help add missing facts."
+1. User taps "Vote on court facts."
 2. If not signed in, show Sign in with Apple.
-3. User selects one or more fact categories.
+3. User selects one or more fact labels.
 4. User submits.
-5. App confirms: "Thanks. Blacktop will review this update."
+5. App confirms: "Thanks. Your vote helps other players judge this court."
 
 Avoid long forms and avoid making the user feel they are writing a review.
 
-### 7.3 Admin Review Flow
+### 7.3 Admin Data Stewardship
 
 #### Purpose
 
-Protect public court data from spam, mistakes, and low-quality submissions.
+Protect the product from spam, duplicates, unsafe data, and obviously abusive submissions without turning admin into the sole judge of every court fact.
 
 #### Admin Capabilities
 
 Admin should be able to:
 
-- View pending updates.
-- Compare submitted value with current court value.
-- Approve selected fields.
-- Reject incorrect updates.
-- Mark a court as recently updated after approval.
+- View suspicious or reported fact votes.
+- Hide or reset abusive labels.
+- Maintain court identity, coordinates, address, postcode, and duplicate cleanup.
+- Manually edit `courts` when the admin has first-hand knowledge or a reliable external source.
 - See basic submitter metadata for abuse control.
 
 #### Implementation Preference
 
-For v2.0, the admin review tool can be:
+For v2.0, the admin stewardship tool can be:
 
 - A hidden admin section in debug/internal builds, or
-- A simple Supabase dashboard/manual SQL workflow, or
+- A simple Supabase dashboard/manual SQL workflow for moderation and manual edits, or
 - A lightweight web admin page later.
 
 Do not expose admin controls in the public App Store build.
@@ -368,19 +389,21 @@ This keeps the product useful while reducing moderation and policy risk.
 
 #### Aggregation Rules
 
-Display aggregated results only after enough votes exist.
+Display vote labels with counts immediately.
 
-Recommended threshold:
+Recommended display:
 
-- Fewer than 3 votes: show "Not enough player votes yet."
-- 3 to 9 votes: show the leading signal with soft language, such as "Players say this is usually casual."
+- 1+ vote: show the selected label with its count, such as "Casual runs · 1".
+- 3 to 9 votes: the leading signal can use soft language, such as "Players say this is usually casual."
 - 10+ votes: show stronger distribution UI, such as a segmented bar.
 
 Example display:
 
 ```text
 Court vibe
-Usually casual · 12 player votes
+Casual runs · 12
+Competitive runs · 4
+Solo shooting · 3
 ```
 
 For intensity, use a calm visual scale:
@@ -423,7 +446,7 @@ Examples:
 - If most votes say competitive runs: show "Competitive pickup."
 - If most votes say easy to join: show "Easy to join."
 
-These tags should be shown only when the vote count threshold is met.
+These tags can be shown with counts as soon as they receive votes. The UI should avoid overstating certainty when counts are low.
 
 ### 7.7 Missing Facts Prompt
 
@@ -548,7 +571,9 @@ Directions actions should not clutter the main map. Keep them inside court detai
 
 ### 8.1 Existing Table: `courts`
 
-Public read table for approved court records.
+Public read table for base court records.
+
+In V2, `courts` should mainly represent stable information: identity, coordinates, address, postcode, source metadata, and admin/manual base fields. Community fact votes should not automatically overwrite this table.
 
 Likely additions:
 
@@ -571,27 +596,49 @@ Suggested fields:
 - `created_at timestamptz default now()`
 - `last_seen_at timestamptz`
 
-### 8.3 New Table: `court_fact_updates`
+### 8.3 New Table: `court_fact_votes`
 
-Stores user-submitted fact updates awaiting review.
+Stores one structured factual label vote per signed-in user, per court, per fact category.
 
 Suggested fields:
 
 - `id uuid primary key`
 - `court_id text references courts(id)`
-- `submitted_by uuid references profiles(id)`
-- `status text default 'pending'`
-- `category text`
-- `field_name text`
-- `old_value text`
-- `submitted_value text`
-- `note text`
+- `profile_id uuid references profiles(id)`
+- `field_name text not null`
+- `vote_value text not null`
 - `created_at timestamptz default now()`
-- `reviewed_at timestamptz`
-- `reviewed_by uuid references profiles(id)`
-- `review_note text`
+- `updated_at timestamptz default now()`
 
-### 8.4 New Table: `admin_actions`
+Recommended unique constraint:
+
+```sql
+unique (court_id, profile_id, field_name)
+```
+
+This lets a user update their fact vote while preventing duplicate votes for the same court and fact category.
+
+### 8.4 New View Or Materialized View: `court_fact_vote_summaries`
+
+Aggregates public fact labels without exposing individual voters.
+
+Suggested output:
+
+- `court_id`
+- `field_name`
+- `vote_value`
+- `vote_count`
+- `field_total`
+- `percentage`
+- `updated_at`
+
+Display rule:
+
+- Show labels with counts from 1 vote onward.
+- Avoid claiming the label is verified.
+- Sort labels by vote count, then by recent activity.
+
+### 8.5 New Table: `admin_actions`
 
 Audit trail for moderation decisions.
 
@@ -605,7 +652,7 @@ Suggested fields:
 - `created_at timestamptz default now()`
 - `metadata jsonb`
 
-### 8.5 New Table: `court_vibe_votes`
+### 8.6 New Table: `court_vibe_votes`
 
 Stores one structured vibe/intensity vote per signed-in user, per court, per category.
 
@@ -627,7 +674,7 @@ unique (court_id, profile_id, category)
 
 This allows a user to change their vote while preventing duplicate votes for the same court and category.
 
-### 8.6 New View Or Materialized View: `court_vibe_summaries`
+### 8.7 New View Or Materialized View: `court_vibe_summaries`
 
 Aggregates public court vibe results without exposing individual voters.
 
@@ -643,11 +690,11 @@ Suggested output:
 
 Display rules should be applied in the app or view:
 
-- Fewer than 3 votes: do not show a leading label.
-- 3+ votes: show soft aggregate copy.
+- 1+ vote: show the label with its count.
+- 3+ votes: show soft leading-signal copy if useful.
 - 10+ votes: show richer distribution UI.
 
-### 8.7 Future Table: `court_photo_submissions`
+### 8.8 Future Table: `court_photo_submissions`
 
 Not required for v2.0 unless user photo review is included.
 
@@ -655,25 +702,25 @@ Not required for v2.0 unless user photo review is included.
 
 ### Public Users
 
-- Can read approved court records.
+- Can read base court records.
 - Cannot update `courts` directly.
 - Cannot read private moderation tables unless explicitly allowed.
 
 ### Authenticated Users
 
-- Can insert their own pending `court_fact_updates`.
-- Can read their own submitted updates, optional.
+- Can insert or update their own `court_fact_votes`.
+- Can read their own fact votes, optional.
 - Can insert or update their own `court_vibe_votes`.
+- Cannot insert more than one fact vote per court/field because of the unique constraint.
 - Cannot insert more than one vote per court/category because of the unique constraint.
-- Cannot approve or reject updates.
-- Cannot edit another user's submissions.
+- Cannot edit another user's votes.
 - Cannot read individual vote rows from other users.
 
 ### Admin Users
 
-- Can read pending submissions.
-- Can approve/reject submissions.
-- Can update public court facts through controlled admin workflows.
+- Can hide or reset suspicious vote labels.
+- Can maintain base court records, duplicate cleanup, coordinates, and address data.
+- Can manually update public court facts only when there is first-hand knowledge or a reliable source.
 
 ### RLS Principle
 
@@ -701,7 +748,7 @@ App Store privacy answers may need to disclose:
 - Do not imply court vibe votes are live occupancy.
 - Do not show public user profiles in v2.
 - Do not expose user email in app UI.
-- Make contribution review clear in the submission flow.
+- Make it clear that community labels are vote-backed signals, not guaranteed verification.
 
 ## 11. UX Changes By Screen
 
@@ -716,7 +763,7 @@ App Store privacy answers may need to disclose:
 
 - Add checklist-style sections.
 - Add derived "Best for" tags.
-- Add court vibe/intensity summary when enough player votes exist.
+- Add court vibe/intensity labels with vote counts.
 - Add lightweight vibe voting entry for signed-in users.
 - Add "Know this court?" prompt when important facts are missing.
 - Add directions action sheet.
@@ -728,25 +775,26 @@ App Store privacy answers may need to disclose:
 - Let users vote or update their vote after signing in.
 - Use structured choices only.
 - Do not show individual voters.
-- Do not show vote results until the minimum vote threshold is met.
+- Show vote labels with counts immediately; avoid strong recommendation copy until enough votes exist.
 
-### Fact Update Flow
+### Fact Signal Flow
 
 - Lightweight structured form.
 - Sign in with Apple only when submitting.
-- Confirmation screen after submission.
+- Confirmation after voting.
+- Show the selected label with a count so the action feels real.
 
 ### Profile
 
 - Keep lightweight.
-- Show Sign in with Apple state only if user wants to contribute.
-- Keep saved courts local unless a future cloud sync feature is intentionally added.
+- Own the Sign in with Apple entry and sign-out state.
+- Keep saved courts local when signed out; sync them when signed in.
 - Keep Data Sources, Terms, Privacy, and Support here.
 
 ### Admin
 
 - Keep hidden from production user UI.
-- Prefer backend/manual review first if that reduces App Store risk.
+- Focus on abuse control, duplicate cleanup, and base record maintenance rather than judging every fact vote.
 
 ## 12. Rollout Plan
 
@@ -754,15 +802,15 @@ App Store privacy answers may need to disclose:
 
 - Add Sign in with Apple and Supabase auth.
 - Add profiles table.
-- Add `court_fact_updates` table with RLS.
-- Add submission API path from app to Supabase.
+- Add `court_fact_votes` table with RLS.
+- Add fact vote API path from app to Supabase.
 - Keep all public browsing unchanged.
 
 ### Phase 2: Contribution UX
 
 - Add "Know this court?" prompt.
-- Add structured fact update form.
-- Add pending confirmation state.
+- Add structured fact voting form.
+- Add vote confirmation state.
 - Add basic contribution history only if it stays lightweight.
 
 ### Phase 3: Court Vibe Voting
@@ -773,12 +821,11 @@ App Store privacy answers may need to disclose:
 - Add court detail vibe summary module.
 - Add signed-in vote/update flow.
 
-### Phase 4: Admin Review
+### Phase 4: Admin Stewardship
 
-- Create admin review workflow.
-- Approve/reject pending updates.
-- Merge approved updates into `courts`.
-- Update `last_fact_update_at`.
+- Create admin moderation workflow for suspicious votes.
+- Allow admins to hide/reset abusive fact or vibe labels.
+- Keep manual `courts` edits for base data and reliable first-hand checks.
 
 ### Phase 5: Detail Utility Upgrade
 
@@ -803,17 +850,17 @@ App Store privacy answers may need to disclose:
 - Directions tap rate
 - Saved court rate
 - Contribution prompt tap rate
-- Fact update submission rate
-- Approved update rate
+- Fact label vote rate
+- Fact labels with 3+ votes
 - Court vibe voting rate
 - Court vibe vote update rate
 
 ### Quality Metrics
 
-- Percentage of courts with key facts completed
-- Percentage of courts updated in last 90 days
-- Rejected submission rate
-- Duplicate/spam submission rate
+- Percentage of courts with fact labels voted on
+- Percentage of key fact categories with 3+ votes
+- Hidden/reset suspicious vote rate
+- Duplicate/spam report rate
 - Courts with 3+ vibe votes
 - Courts with 10+ vibe votes
 - App launch-to-map-ready time
@@ -823,7 +870,7 @@ App Store privacy answers may need to disclose:
 
 ### Moderation Load
 
-Even structured updates create review work. Start with a small review queue and avoid public photos in v2.0.
+Even structured votes create abuse-control work. Start with label voting and avoid public photos in v2.0.
 
 ### Privacy Expansion
 
@@ -831,7 +878,7 @@ Login changes App Store privacy answers. Keep auth minimal and avoid unnecessary
 
 ### Data Trust
 
-If submissions are published without review, data quality may drop quickly. Keep pending review mandatory.
+If labels are presented as verified truth, users may over-trust weak signals. Always show vote counts and avoid absolute wording when counts are low.
 
 ### Product Complexity
 
@@ -839,16 +886,16 @@ Do not let contribution features dominate the app. The primary experience is sti
 
 ### Subjective Signal Risk
 
-Court vibe voting is more subjective than physical court facts. Keep it structured, aggregate-only, and thresholded. Do not allow public free-text vibe comments in v2.0.
+Court vibe voting is more subjective than physical court facts. Keep it structured, aggregate-only, and count-based. Do not allow public free-text vibe comments in v2.0.
 
 ## 15. Recommended V2.0 Scope
 
 Build these first:
 
 1. Sign in with Apple for contributors only.
-2. Structured court fact update submissions.
-3. Supabase pending review table and RLS.
-4. Admin review workflow.
+2. Structured court fact label voting.
+3. Supabase fact vote tables/views and RLS.
+4. Admin stewardship tools for abuse control and base data maintenance.
 5. Court detail checklist redesign.
 6. Court vibe/intensity voting with one vote per user per court/category.
 7. Best for tags.

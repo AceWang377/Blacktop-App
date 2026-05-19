@@ -1,10 +1,10 @@
-# Blacktop V2 Account, Admin, Search, and Directions Implementation Plan
+# Blacktop V2 Account, Fact Voting, Search, and Directions Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn the first V2 community foundation into a product-feeling release: account state lives in Profile, saved courts can sync to a signed-in account, user votes visibly update, admins can approve factual updates into `courts`, and map search/directions become more useful.
+**Goal:** Turn the first V2 community foundation into a product-feeling release: account state lives in Profile, saved courts can sync to a signed-in account, fact/vibe votes visibly update as count-backed labels, admin controls focus on abuse/base data maintenance, and map search/directions become more useful.
 
-**Architecture:** Keep no-login browsing as the default. Use Supabase Auth only for account-backed features, store public court data in `courts`, store user-owned state in separate RLS-protected tables, and expose admin review through a hidden/admin-only app surface plus SQL-backed approval RPCs. Avoid public comments, public profiles, social feeds, and realtime occupancy.
+**Architecture:** Keep no-login browsing as the default. Use Supabase Auth only for account-backed features, store base court identity/location data in `courts`, store user-owned votes in separate RLS-protected tables, and expose admin stewardship only for abuse control, duplicate cleanup, and reliable manual base-data edits. Avoid public comments, public profiles, social feeds, realtime occupancy, and admin claims of absolute truth for every court fact.
 
 **Tech Stack:** SwiftUI, MapKit, AuthenticationServices, Supabase REST/RPC, PostgreSQL RLS, Sign in with Apple, Keychain.
 
@@ -35,28 +35,27 @@ Recommended behaviour:
 
 This avoids surprising data loss and keeps offline/local behaviour simple.
 
-### 3. Vibe voting needs visible personal feedback
+### 3. Vibe voting needs visible counts
 
-Current behaviour can feel fake because aggregated results are hidden until at least 3 votes exist. That threshold is correct for public aggregate trust, but the user needs immediate confirmation.
+Current behaviour can feel fake because aggregated results are hidden until at least 3 votes exist. V2 should show labels with counts immediately so the user understands their vote changed the signal.
 
 Recommended behaviour:
-- After voting, show "Your vote: Casual runs" immediately.
-- Public aggregate still appears only after threshold.
-- If aggregate is below threshold, show "Not enough player votes yet" plus user's own vote if signed in.
+- After voting, show the selected label with a count, such as `Casual runs · 1`.
+- Strong recommendation copy can still wait until higher counts.
+- Low-count labels are allowed because the count itself communicates weak confidence.
 - Users can revisit and change their vote.
 
-### 4. Admin approval should write into `courts`
+### 4. Court facts should be vote-backed labels, not admin-approved truth
 
-This is reasonable for admin accounts only. Normal users should never write directly to `courts`.
+The original admin approval model is too heavy and can overstate truth. For many court facts, even admin cannot reliably know whether a global court is dry after rain, clean, or has nets unless they personally checked it.
 
 Recommended behaviour:
-- User submissions go to `court_fact_updates`.
-- Admin sees pending submissions.
-- Admin approves one field at a time.
-- Approval runs a Supabase RPC that updates the exact column in `courts`, marks the submission approved, and records an audit row.
-- Admin rejection only updates submission status.
+- User fact submissions become `court_fact_votes`.
+- Court details show the winning or relevant fact labels with vote counts, such as `Nets · 14`, `Dries fast · 8`, `Double rim · 6`.
+- Admin does not need to approve every fact into `courts`.
+- Admin can hide/reset suspicious labels and manually maintain base court data when there is first-hand knowledge or a reliable source.
 
-This prevents the app from becoming complex while making the workflow real.
+This keeps the app honest: users see what other players reported, and the number tells them how much confidence to place in the signal.
 
 ### 5. Search and directions should be completed before V2 release
 
@@ -75,11 +74,11 @@ Recommended behaviour:
 ### Swift app files
 
 - Modify: `Blacktop/Models/AppStore.swift`
-  - Own account session, saved sync lifecycle, personal vibe votes, admin review actions.
+  - Own account session, saved sync lifecycle, fact vote summaries, and vibe vote summaries.
 - Modify: `Blacktop/Data/SupabaseCommunityService.swift`
-  - Add saved courts endpoints, personal vote fetching, pending fact updates, approve/reject RPC calls.
+  - Add saved courts endpoints, fact vote endpoints, personal vote fetching, and summary fetching.
 - Modify: `Blacktop/Models/CommunityModels.swift`
-  - Add saved court DTOs, pending update DTOs, admin role helpers, personal vote model.
+  - Add saved court DTOs, fact vote DTOs, summary DTOs, and personal vote models.
 - Modify: `Blacktop/Views/ProfileView.swift`
   - Add Profile sign-in/sign-out card and saved sync status.
 - Modify: `Blacktop/Views/CommunityContributionViews.swift`
@@ -88,15 +87,15 @@ Recommended behaviour:
   - Show user's vote separately from aggregate; replace single directions button with action sheet.
 - Modify: `Blacktop/Views/CourtMapView.swift`
   - Improve search summary and selected-result handling.
-- Create: `Blacktop/Views/AdminReviewView.swift`
-  - Admin-only pending submission review list and approve/reject screen.
+- Create: `Blacktop/Views/AdminStewardshipView.swift`
+  - Admin-only suspicious label controls and base data maintenance entry point.
 
 ### Supabase files
 
 - Modify: `supabase/v2_community_features.sql`
-  - Add `saved_courts`, `admin_actions`, personal vote select policies, approval/rejection RPCs.
+  - Add `saved_courts`, `court_fact_votes`, `court_fact_vote_summaries`, `admin_actions`, and personal vote select policies.
 - Create: `docs/v2-community-admin-workflow.md`
-  - Explain how to enable admin role and review submissions.
+  - Explain how to enable admin role and moderate suspicious labels.
 
 ---
 
@@ -229,7 +228,7 @@ git commit -m "Sync saved courts for signed-in users"
 
 ---
 
-## Task 3: Show Personal Vibe Votes Immediately
+## Task 3: Show Vibe Votes as Counted Labels
 
 **Files:**
 - Modify: `supabase/v2_community_features.sql`
@@ -280,14 +279,15 @@ Add:
 @Published var userVibeVotesByCourtID: [String: [CourtVibeUserVote]] = [:]
 ```
 
-After sign-in and after vote submission, load personal votes for the selected court.
+After sign-in and after vote submission, load personal votes and public summaries for the selected court.
 
-- [ ] **Step 5: Court details display both aggregate and personal state**
+- [ ] **Step 5: Court details display labels with counts**
 
 Rules:
-- If aggregate exists: show aggregate.
-- If aggregate is below threshold and signed-in user voted: show `Your vote: ...`.
-- If no aggregate and no user vote: show `Waiting for player votes`.
+- If any public vote exists: show the label and count, such as `Casual runs · 1`.
+- If the signed-in user voted but the summary has not refreshed yet: show `Your vote: Casual runs`.
+- If no aggregate and no user vote: show `No player votes yet`.
+- Avoid strong wording like `Usually casual` until the count is at least 3.
 
 - [ ] **Step 6: Build and commit**
 
@@ -295,106 +295,122 @@ Run build. Commit:
 
 ```bash
 git add supabase/v2_community_features.sql Blacktop/Data/SupabaseCommunityService.swift Blacktop/Models/CommunityModels.swift Blacktop/Models/AppStore.swift Blacktop/Views/CourtDetailView.swift Blacktop/Views/CommunityContributionViews.swift
-git commit -m "Show personal court vibe votes"
+git commit -m "Show court vibe vote counts"
 ```
 
 ---
 
-## Task 4: Admin Review Writes Approved Facts to Courts
+## Task 4: Add Court Fact Voting Labels
 
 **Files:**
 - Modify: `supabase/v2_community_features.sql`
-- Create: `Blacktop/Views/AdminReviewView.swift`
 - Modify: `Blacktop/Data/SupabaseCommunityService.swift`
 - Modify: `Blacktop/Models/CommunityModels.swift`
-- Modify: `Blacktop/Views/ProfileView.swift`
+- Modify: `Blacktop/Models/AppStore.swift`
+- Modify: `Blacktop/Views/CourtDetailView.swift`
+- Modify: `Blacktop/Views/CommunityContributionViews.swift`
 
-- [ ] **Step 1: Add admin actions table**
+- [ ] **Step 1: Add court fact votes table**
 
 Add:
 
 ```sql
-create table if not exists public.admin_actions (
+create table if not exists public.court_fact_votes (
     id uuid primary key default gen_random_uuid(),
-    admin_user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
-    action_type text not null,
-    target_table text not null,
-    target_id text not null,
-    metadata jsonb not null default '{}'::jsonb,
-    created_at timestamptz not null default now()
+    court_id text not null references public.courts(id) on delete cascade,
+    user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+    field_key text not null,
+    vote_value text not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    unique (court_id, user_id, field_key)
 );
 
-alter table public.admin_actions enable row level security;
+create index if not exists court_fact_votes_court_field_idx
+    on public.court_fact_votes (court_id, field_key);
 
-drop policy if exists "Admins can read admin actions" on public.admin_actions;
-create policy "Admins can read admin actions"
-on public.admin_actions
-for select
-to authenticated
-using (public.is_blacktop_admin());
+alter table public.court_fact_votes enable row level security;
 
-drop policy if exists "Admins can insert admin actions" on public.admin_actions;
-create policy "Admins can insert admin actions"
-on public.admin_actions
+drop policy if exists "Users can insert own fact votes" on public.court_fact_votes;
+create policy "Users can insert own fact votes"
+on public.court_fact_votes
 for insert
 to authenticated
-with check (public.is_blacktop_admin());
+with check (auth.uid() = user_id);
 
-grant select, insert on public.admin_actions to authenticated;
+drop policy if exists "Users can update own fact votes" on public.court_fact_votes;
+create policy "Users can update own fact votes"
+on public.court_fact_votes
+for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+drop policy if exists "Users can read own fact votes" on public.court_fact_votes;
+create policy "Users can read own fact votes"
+on public.court_fact_votes
+for select
+to authenticated
+using (auth.uid() = user_id or public.is_blacktop_admin());
+
+grant select, insert, update on public.court_fact_votes to authenticated;
 ```
 
-- [ ] **Step 2: Add approval RPC**
+- [ ] **Step 2: Add fact vote summary view**
 
-Add `approve_court_fact_update(update_id uuid)` as `security definer`.
+```sql
+create or replace view public.court_fact_vote_summaries as
+select
+    court_id,
+    field_key,
+    vote_value,
+    count(*)::int as vote_count,
+    sum(count(*)) over (partition by court_id, field_key)::int as field_total,
+    round(
+        count(*)::numeric /
+        nullif(sum(count(*)) over (partition by court_id, field_key), 0) * 100
+    )::int as percentage
+from public.court_fact_votes
+group by court_id, field_key, vote_value;
 
-RPC behaviour:
-- Verify `public.is_blacktop_admin()`.
-- Read pending update.
-- Map `field_key` to allowed `courts` column only.
-- Execute dynamic SQL with `format('%I', column_name)` for safe column name.
-- Update `court_fact_updates.status = 'approved'`.
-- Insert `admin_actions`.
-
-Allowed fields are exactly:
-
-```text
-dryness_after_rain, has_nets, has_lights, rim_height, rim_type, court_space, court_cleanliness, price_type, court_type, has_toilets, has_drinking_water, has_parking
+grant select on public.court_fact_vote_summaries to anon, authenticated;
 ```
 
-- [ ] **Step 3: Add rejection RPC**
-
-Add `reject_court_fact_update(update_id uuid)`.
-
-RPC behaviour:
-- Verify admin.
-- Set status rejected.
-- Insert admin action.
-
-- [ ] **Step 4: Add admin service methods**
+- [ ] **Step 3: Add fact vote service methods**
 
 Add:
-- `fetchPendingFactUpdates(session:)`
-- `approveFactUpdate(id:session:)`
-- `rejectFactUpdate(id:session:)`
+- `fetchFactVoteSummaries(courtID:)`
+- `fetchUserFactVotes(courtID:session:)`
+- `submitFactVote(courtID:field:value:session:)`
 
-- [ ] **Step 5: Add AdminReviewView**
+Use upsert with `on_conflict=court_id,user_id,field_key`.
 
-Hidden owner/admin screen should show:
-- Court id/name if available.
-- Field key.
-- Suggested value.
-- Approve button.
-- Reject button.
+- [ ] **Step 4: Rename contribution UI from update to vote**
 
-Use this view from the existing debug owner tools first. Do not expose in public navigation.
+Change wording:
+- `Update a court fact` -> `Vote on court facts`
+- `Thanks. Your update is waiting for review.` -> `Thanks. Your vote helps other players.`
+- Do not say admin will verify every fact.
+
+- [ ] **Step 5: Court details show fact labels with counts**
+
+For each fact category with votes, show top labels:
+
+```text
+Nets · 14
+Dries fast · 8
+Double rim · 6
+```
+
+The vote count is mandatory in the label.
 
 - [ ] **Step 6: Build and commit**
 
 Run build. Commit:
 
 ```bash
-git add supabase/v2_community_features.sql Blacktop/Views/AdminReviewView.swift Blacktop/Data/SupabaseCommunityService.swift Blacktop/Models/CommunityModels.swift Blacktop/Views/ProfileView.swift
-git commit -m "Add admin review for court fact updates"
+git add supabase/v2_community_features.sql Blacktop/Data/SupabaseCommunityService.swift Blacktop/Models/CommunityModels.swift Blacktop/Models/AppStore.swift Blacktop/Views/CourtDetailView.swift Blacktop/Views/CommunityContributionViews.swift
+git commit -m "Add court fact vote labels"
 ```
 
 ---
@@ -524,9 +540,9 @@ do update set role = 'admin';
 Add a V2 refinement section:
 - Profile owns sign-in.
 - Saved courts sync only after sign-in.
-- Public vibe aggregate threshold remains 3 votes.
-- User's own vote is shown immediately.
-- Admin approval writes approved facts into `courts`.
+- Vibe labels show vote counts immediately.
+- Court fact labels are vote-backed and count-based.
+- Admin stewardship focuses on abuse control and base data maintenance, not approving every fact into `courts`.
 
 - [ ] **Step 3: Commit**
 
@@ -543,8 +559,8 @@ git commit -m "Document V2 community workflow"
 
 - Profile sign-in: covered by Task 1.
 - Saved courts synced to account: covered by Task 2.
-- Voting no longer feels fake: covered by Task 3.
-- Admin direct write to `courts`: covered by Task 4.
+- Vibe voting no longer feels fake: covered by Task 3.
+- Court fact voting labels: covered by Task 4.
 - Search improvements: covered by Task 6.
 - Full directions actions: covered by Task 5.
 - Documentation before development: covered by this plan and Task 7.
@@ -552,9 +568,8 @@ git commit -m "Document V2 community workflow"
 ### Risk notes
 
 - Apple Sign in with Supabase must be tested on a real device after Task 1 and Task 2.
-- Supabase RPC approval must be tested with a real admin user before shipping.
 - Saved court syncing should be idempotent to avoid duplicate rows.
-- Vibe aggregate threshold should stay at 3 to avoid exposing misleading one-person results.
+- Vibe and fact labels must always show counts to avoid overstating low-confidence signals.
 
 ### Execution recommendation
 
