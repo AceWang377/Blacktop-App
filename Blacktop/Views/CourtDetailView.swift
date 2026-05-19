@@ -6,9 +6,7 @@ struct CourtDetailView: View {
     @EnvironmentObject private var store: AppStore
     @Environment(\.dismiss) private var dismiss
     let court: Court
-    @State private var isShowingFactUpdateSheet = false
-    @State private var isShowingVibeVoteSheet = false
-    @State private var isShowingDirectionsDialog = false
+    @State private var isShowingDirectionsMenu = false
 
     var body: some View {
         NavigationStack {
@@ -34,16 +32,6 @@ struct CourtDetailView: View {
                 async let factLoad: Void = store.loadFactVotes(for: court)
                 _ = await (vibeLoad, factLoad)
             }
-            .sheet(isPresented: $isShowingFactUpdateSheet) {
-                CourtFactUpdateSheetView(court: court)
-                    .environmentObject(store)
-                    .presentationDetents([.medium, .large])
-            }
-            .sheet(isPresented: $isShowingVibeVoteSheet) {
-                CourtVibeVoteSheetView(court: court)
-                    .environmentObject(store)
-                    .presentationDetents([.medium, .large])
-            }
             .safeAreaInset(edge: .bottom) {
                 HStack(spacing: 12) {
                     Button {
@@ -54,23 +42,22 @@ struct CourtDetailView: View {
                     .buttonStyle(SecondaryButtonStyle())
 
                     Button(store.copy(.directions)) {
-                        isShowingDirectionsDialog = true
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.86)) {
+                            isShowingDirectionsMenu.toggle()
+                        }
                     }
                     .buttonStyle(PrimaryButtonStyle())
                 }
                 .padding(20)
                 .background(.black.opacity(0.72))
-            }
-            .confirmationDialog(store.copy(.directions), isPresented: $isShowingDirectionsDialog, titleVisibility: .visible) {
-                Button(store.localized("Open in Apple Maps", "使用 Apple 地图打开")) {
-                    openAppleMaps()
+                .overlay(alignment: .topTrailing) {
+                    if isShowingDirectionsMenu {
+                        directionsMenu
+                            .padding(.trailing, 20)
+                            .offset(y: -112)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
-                Button(store.localized("Open in Google Maps", "使用 Google 地图打开")) {
-                    openGoogleMaps()
-                }
-                Button(store.localized("Cancel", "取消"), role: .cancel) {}
-            } message: {
-                Text(court.name)
             }
         }
     }
@@ -125,31 +112,27 @@ struct CourtDetailView: View {
     }
 
     private var communityFactVotes: some View {
-        SectionCard(title: store.localized("Player fact votes", "球员事实投票")) {
+        SectionCard(title: store.localized("Court facts", "球场事实")) {
             VStack(alignment: .leading, spacing: 14) {
-                Text(store.localized("Facts here come from player votes. Each label shows how many signed-in players chose it.", "这里的事实来自玩家投票。每个标签数字代表有多少已登录球员选择它。"))
+                Text(store.localized("Tap a tag to vote. You can change your vote anytime. Counts show how many players chose each option.", "点击标签即可投票。你可以随时修改投票。数字代表有多少球员选择该选项。"))
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.62))
 
-                let summaries = groupedFactVoteSummaries
-                if summaries.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
-                        FactChip(label: store.localized("No player fact votes yet", "暂无玩家事实投票"), tone: .unknown)
-                        Text(store.localized("Be the first to vote on nets, lights, rain impact, rim height, facilities and more.", "你可以第一个投票补充篮网、灯光、雨后状态、篮筐高度、设施等信息。"))
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.white.opacity(0.54))
-                    }
-                } else {
-                    VStack(alignment: .leading, spacing: 13) {
-                        ForEach(summaries, id: \.field) { group in
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(group.field.title(store.appLanguage))
-                                    .font(.caption.weight(.black))
-                                    .foregroundStyle(.white.opacity(0.56))
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(CommunityFactField.allCases) { field in
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(field.title(store.appLanguage))
+                                .font(.caption.weight(.black))
+                                .foregroundStyle(.white.opacity(0.56))
 
-                                FlowLayout(spacing: 8) {
-                                    ForEach(group.summaries) { summary in
-                                        FactChip(label: summary.label(store.appLanguage), tone: factVoteTone(summary))
+                            FlowLayout(spacing: 8) {
+                                ForEach(field.options(store.appLanguage)) { option in
+                                    VoteTagButton(
+                                        label: tagLabel(option.label(store.appLanguage), count: factVoteCount(field: field, value: option.value)),
+                                        isSelected: isUserFactVoteSelected(field: field, value: option.value),
+                                        isSubmitting: store.isSubmittingCommunityUpdate
+                                    ) {
+                                        submitFactVote(field: field, value: option.value)
                                     }
                                 }
                             }
@@ -157,20 +140,7 @@ struct CourtDetailView: View {
                     }
                 }
 
-                let userVotes = store.userFactVotesByCourtID[court.id] ?? []
-                if !userVotes.isEmpty {
-                    Text(store.localized("Your votes: \(userVotes.map { $0.label(store.appLanguage) }.joined(separator: ", "))", "你的投票：\(userVotes.map { $0.label(store.appLanguage) }.joined(separator: "，"))"))
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(HLColor.freshGreen.opacity(0.88))
-                }
-
-                Button {
-                    isShowingFactUpdateSheet = true
-                } label: {
-                    Label(store.localized("Vote on any fact", "投票任意事实"), systemImage: "checklist")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(SecondaryButtonStyle())
+                communityMessageView
             }
         }
     }
@@ -182,33 +152,27 @@ struct CourtDetailView: View {
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.62))
 
-                let summaries = store.vibeSummariesByCourtID[court.id] ?? []
-                if summaries.isEmpty {
-                    FactChip(label: store.localized("Waiting for votes", "等待投票"), tone: .unknown)
-                } else {
-                    VStack(spacing: 12) {
-                        ForEach(CourtVibeCategory.allCases) { category in
-                            if let summary = topVibeSummary(for: category, from: summaries) {
-                                vibeSummaryRow(summary)
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(CourtVibeCategory.allCases) { category in
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(category.title(store.appLanguage))
+                                .font(.caption.weight(.black))
+                                .foregroundStyle(.white.opacity(0.56))
+
+                            FlowLayout(spacing: 8) {
+                                ForEach(category.options) { option in
+                                    VoteTagButton(
+                                        label: tagLabel(option.label(store.appLanguage), count: vibeVoteCount(category: category, option: option)),
+                                        isSelected: isUserVibeVoteSelected(category: category, option: option),
+                                        isSubmitting: store.isSubmittingCommunityUpdate
+                                    ) {
+                                        submitVibeVote(category: category, option: option)
+                                    }
+                                }
                             }
                         }
                     }
                 }
-
-                let userVotes = store.userVibeVotesByCourtID[court.id] ?? []
-                if !userVotes.isEmpty {
-                    Text(store.localized("Your vibe votes: \(userVotes.map { $0.option.label(store.appLanguage) }.joined(separator: ", "))", "你的氛围投票：\(userVotes.map { $0.option.label(store.appLanguage) }.joined(separator: "，"))"))
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(HLColor.freshGreen.opacity(0.88))
-                }
-
-                Button {
-                    isShowingVibeVoteSheet = true
-                } label: {
-                    Label(store.localized("Vote court vibe", "投票球场氛围"), systemImage: "slider.horizontal.3")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(SecondaryButtonStyle())
             }
         }
     }
@@ -224,54 +188,92 @@ struct CourtDetailView: View {
         }
     }
 
-    private var groupedFactVoteSummaries: [(field: CommunityFactField, summaries: [CourtFactVoteSummary])] {
-        let summaries = store.factVoteSummariesByCourtID[court.id] ?? []
-        return CommunityFactField.allCases.compactMap { field in
-            let fieldSummaries = summaries
-                .filter { $0.field == field }
-                .sorted {
-                    if $0.voteCount == $1.voteCount { return $0.value < $1.value }
-                    return $0.voteCount > $1.voteCount
-                }
-                .prefix(3)
-            guard !fieldSummaries.isEmpty else { return nil }
-            return (field: field, summaries: Array(fieldSummaries))
+    private var directionsMenu: some View {
+        VStack(spacing: 8) {
+            Button {
+                isShowingDirectionsMenu = false
+                openAppleMaps()
+            } label: {
+                Label(store.localized("Apple Maps", "Apple 地图"), systemImage: "map.fill")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(DirectionMenuButtonStyle())
+
+            Button {
+                isShowingDirectionsMenu = false
+                openGoogleMaps()
+            } label: {
+                Label(store.localized("Google Maps", "Google 地图"), systemImage: "g.circle.fill")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(DirectionMenuButtonStyle())
+        }
+        .padding(10)
+        .frame(width: 220)
+        .background(.black.opacity(0.88))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(.white.opacity(0.16), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.30), radius: 18, y: 8)
+    }
+
+    @ViewBuilder
+    private var communityMessageView: some View {
+        if let message = store.communityMessage {
+            Text(message)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.70))
+                .padding(.top, 2)
         }
     }
 
-    private func factVoteTone(_ summary: CourtFactVoteSummary) -> FactTone {
-        if summary.fieldTotal < 3 { return .unknown }
-        return summary.percentage >= 60 ? .positive : .neutral
+    private func tagLabel(_ label: String, count: Int) -> String {
+        "\(label) - \(count)"
     }
 
-    private func topVibeSummary(for category: CourtVibeCategory, from summaries: [CourtVibeSummary]) -> CourtVibeSummary? {
-        summaries
-            .filter { $0.category == category }
-            .sorted {
-                if $0.voteCount == $1.voteCount { return $0.option.rawValue < $1.option.rawValue }
-                return $0.voteCount > $1.voteCount
-            }
-            .first
+    private func factVoteCount(field: CommunityFactField, value: String) -> Int {
+        (store.factVoteSummariesByCourtID[court.id] ?? [])
+            .first { $0.field == field && $0.value == value }?
+            .voteCount ?? 0
     }
 
-    private func vibeSummaryRow(_ summary: CourtVibeSummary) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(summary.category.title(store.appLanguage))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.82))
-                Spacer()
-                Text(summary.label(store.appLanguage))
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-            }
+    private func vibeVoteCount(category: CourtVibeCategory, option: CourtVibeOption) -> Int {
+        (store.vibeSummariesByCourtID[court.id] ?? [])
+            .first { $0.category == category && $0.option == option }?
+            .voteCount ?? 0
+    }
 
-            ProgressView(value: Double(summary.percentage), total: 100)
-                .tint(summary.option.tone == .warning ? HLColor.basketballOrange : HLColor.freshGreen)
+    private func isUserFactVoteSelected(field: CommunityFactField, value: String) -> Bool {
+        (store.userFactVotesByCourtID[court.id] ?? [])
+            .contains { $0.field == field && $0.value == value }
+    }
 
-            Text(store.localized("\(summary.voteCount) of \(summary.categoryTotal) votes", "\(summary.categoryTotal) 票中的 \(summary.voteCount) 票"))
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.50))
+    private func isUserVibeVoteSelected(category: CourtVibeCategory, option: CourtVibeOption) -> Bool {
+        (store.userVibeVotesByCourtID[court.id] ?? [])
+            .contains { $0.category == category && $0.option == option }
+    }
+
+    private func submitFactVote(field: CommunityFactField, value: String) {
+        guard store.contributorSession != nil else {
+            store.communityMessage = store.localized("Sign in from Profile to vote.", "请先在我的页面使用 Apple 登录后再投票。")
+            return
+        }
+
+        Task {
+            await store.submitFactVote(for: court, draft: CourtFactUpdateDraft(field: field, value: value))
+        }
+    }
+
+    private func submitVibeVote(category: CourtVibeCategory, option: CourtVibeOption) {
+        guard store.contributorSession != nil else {
+            store.communityMessage = store.localized("Sign in from Profile to vote.", "请先在我的页面使用 Apple 登录后再投票。")
+            return
+        }
+
+        Task {
+            await store.submitVibeVote(for: court, category: category, option: option)
         }
     }
 
@@ -294,5 +296,43 @@ struct CourtDetailView: View {
                 UIApplication.shared.open(webURL)
             }
         }
+    }
+}
+
+private struct VoteTagButton: View {
+    let label: String
+    let isSelected: Bool
+    let isSubmitting: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.caption.weight(.black))
+                .foregroundStyle(isSelected ? HLColor.night : .white.opacity(0.86))
+                .padding(.horizontal, 12)
+                .frame(height: 34)
+                .background(isSelected ? HLColor.freshGreen : .white.opacity(0.10))
+                .clipShape(Capsule())
+                .overlay {
+                    Capsule()
+                        .stroke(isSelected ? .clear : .white.opacity(0.16), lineWidth: 1)
+                }
+                .opacity(isSubmitting ? 0.62 : 1)
+        }
+        .buttonStyle(.plain)
+        .disabled(isSubmitting)
+    }
+}
+
+private struct DirectionMenuButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .frame(height: 44)
+            .background(.white.opacity(configuration.isPressed ? 0.16 : 0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
