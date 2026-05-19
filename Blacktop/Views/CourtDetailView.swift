@@ -9,23 +9,15 @@ struct CourtDetailView: View {
     @State private var isShowingFactUpdateSheet = false
     @State private var isShowingVibeVoteSheet = false
     @State private var isShowingDirectionsDialog = false
-    @State private var copiedDirectionsMessage: String?
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
-                    quickFacts
                     communityFactVotes
                     courtVibe
-                    bestFor
-                    communityUpdate
                     locationFacts
-                    playingConditions
-                    rimAndHoop
-                    accessAndTiming
-                    facilities
                 }
                 .padding(20)
             }
@@ -75,12 +67,6 @@ struct CourtDetailView: View {
                 }
                 Button(store.localized("Open in Google Maps", "使用 Google 地图打开")) {
                     openGoogleMaps()
-                }
-                Button(store.localized("Copy address", "复制地址")) {
-                    copyAddress()
-                }
-                Button(store.localized("Copy coordinates", "复制坐标")) {
-                    copyCoordinates()
                 }
                 Button(store.localized("Cancel", "取消"), role: .cancel) {}
             } message: {
@@ -138,28 +124,20 @@ struct CourtDetailView: View {
         }
     }
 
-    private var quickFacts: some View {
-        SectionCard(title: store.localized("Quick facts", "快速信息")) {
-            FlowLayout(spacing: 8) {
-                ForEach(court.topFacts(language: store.appLanguage)) { fact in
-                    FactChip(label: fact.label, tone: fact.tone)
-                }
-                FactChip(label: court.rimHeight.displayName(store.appLanguage), tone: court.rimHeight == .standard ? .positive : court.rimHeight == .unknown ? .unknown : .warning)
-            }
-        }
-    }
-
     private var communityFactVotes: some View {
         SectionCard(title: store.localized("Player fact votes", "球员事实投票")) {
             VStack(alignment: .leading, spacing: 14) {
-                Text(store.localized("Labels show how many signed-in players chose each fact. Use the counts as confidence, not a formal rating.", "标签数字代表有多少已登录球员选择了这个事实。请把数字当作参考信心，而不是正式评分。"))
+                Text(store.localized("Facts here come from player votes. Each label shows how many signed-in players chose it.", "这里的事实来自玩家投票。每个标签数字代表有多少已登录球员选择它。"))
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.62))
 
                 let summaries = groupedFactVoteSummaries
                 if summaries.isEmpty {
-                    FlowLayout(spacing: 8) {
-                        FactChip(label: store.localized("No votes yet", "暂无投票"), tone: .unknown)
+                    VStack(alignment: .leading, spacing: 10) {
+                        FactChip(label: store.localized("No player fact votes yet", "暂无玩家事实投票"), tone: .unknown)
+                        Text(store.localized("Be the first to vote on nets, lights, rain impact, rim height, facilities and more.", "你可以第一个投票补充篮网、灯光、雨后状态、篮筐高度、设施等信息。"))
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.white.opacity(0.54))
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 13) {
@@ -189,7 +167,7 @@ struct CourtDetailView: View {
                 Button {
                     isShowingFactUpdateSheet = true
                 } label: {
-                    Label(store.localized("Vote on facts", "投票球场事实"), systemImage: "checklist")
+                    Label(store.localized("Vote on any fact", "投票任意事实"), systemImage: "checklist")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(SecondaryButtonStyle())
@@ -235,39 +213,6 @@ struct CourtDetailView: View {
         }
     }
 
-    private var bestFor: some View {
-        SectionCard(title: store.localized("Best for", "适合用途")) {
-            FlowLayout(spacing: 8) {
-                ForEach(bestForSignals, id: \.label) { fact in
-                    FactChip(label: fact.label, tone: fact.tone)
-                }
-            }
-        }
-    }
-
-    private var communityUpdate: some View {
-        SectionCard(title: store.localized("Know this court?", "熟悉这个球场？")) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(store.localized("Help complete practical facts like nets, lights, rain impact, rim height and facilities. Sign in is only required when you vote.", "帮助补全篮网、灯光、雨后状态、篮筐高度和设施等实用信息。只有投票时需要登录。"))
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.62))
-
-                HStack(spacing: 10) {
-                    FactChip(label: missingFactsLabel, tone: missingFactsCount == 0 ? .positive : .unknown)
-                    Spacer()
-                }
-
-                Button {
-                    isShowingFactUpdateSheet = true
-                } label: {
-                    Label(store.localized("Vote on a fact", "投票一个事实"), systemImage: "checklist")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(SecondaryButtonStyle())
-            }
-        }
-    }
-
     private var locationFacts: some View {
         SectionCard(title: store.localized("Location", "位置")) {
             FactRow(title: store.localized("Area", "区域"), value: court.area)
@@ -277,91 +222,6 @@ struct CourtDetailView: View {
                 FactRow(title: store.localized("Address", "地址"), value: addressLine)
             }
         }
-    }
-
-    private var playingConditions: some View {
-        SectionCard(title: store.localized("Playing conditions", "场地状态")) {
-            FactRow(title: store.localized("Surface", "地面"), value: court.surfaceType.displayName(store.appLanguage))
-            FactRow(title: store.localized("Dryness", "干燥情况"), value: court.drynessAfterRain.displayName(store.appLanguage), tone: court.drynessAfterRain.tone)
-            FactRow(title: store.localized("Slippery", "湿滑"), value: court.slipperyWhenWet.displayName(store.appLanguage), tone: court.slipperyWhenWet == .yes ? .warning : court.slipperyWhenWet == .no ? .positive : .unknown)
-            FactRow(title: store.localized("Rain", "雨天"), value: court.rainPlayable.displayName(store.appLanguage), tone: court.rainPlayable == .indoorUnaffected || court.rainPlayable == .yes ? .positive : court.rainPlayable == .no ? .warning : .unknown)
-            FactRow(title: store.localized("Space", "空间"), value: court.courtSpace.displayName(store.appLanguage), tone: court.courtSpace == .spacious ? .positive : court.courtSpace == .unknown ? .unknown : .warning)
-            FactRow(title: store.localized("Clean", "清洁度"), value: court.courtCleanliness.displayName(store.appLanguage), tone: court.courtCleanliness == .clean ? .positive : court.courtCleanliness == .unknown ? .unknown : .neutral)
-        }
-    }
-
-    private var rimAndHoop: some View {
-        SectionCard(title: store.localized("Rim and hoop", "篮筐与篮网")) {
-            FactRow(title: store.localized("Hoops", "篮筐数量"), value: court.hoopCount.map(String.init) ?? store.localized("Unknown", "未知"))
-            FactRow(title: store.localized("Nets", "篮网"), value: court.hasNets.displayName(store.appLanguage), tone: court.hasNets.tone)
-            FactRow(title: store.localized("Height", "高度"), value: court.rimHeight.displayName(store.appLanguage), tone: court.rimHeight == .standard ? .positive : court.rimHeight == .unknown ? .unknown : .warning)
-            FactRow(title: store.localized("Rim", "篮筐"), value: court.rimType.displayName(store.appLanguage), tone: court.rimType == .doubleRim ? .warning : court.rimType == .unknown ? .unknown : .neutral)
-            FactRow(title: store.localized("Backboard", "篮板"), value: court.backboardCondition.displayName(store.appLanguage))
-            FactRow(title: store.localized("Rim condition", "篮筐状态"), value: court.rimCondition.displayName(store.appLanguage))
-        }
-    }
-
-    private var accessAndTiming: some View {
-        SectionCard(title: store.localized("Access and timing", "开放与时间")) {
-            FactRow(title: store.localized("Access", "开放方式"), value: court.accessType.displayName(store.appLanguage))
-            FactRow(title: store.localized("Cost", "费用"), value: court.priceType.displayName(store.appLanguage), tone: court.priceType == .free ? .positive : court.priceType == .unknown ? .unknown : .neutral)
-            FactRow(title: store.localized("Hours", "开放时间"), value: court.openingHours)
-            FactRow(title: store.localized("Evening", "晚上"), value: court.eveningAccess.displayName(store.appLanguage))
-            FactRow(title: store.localized("Peak", "高峰"), value: court.peakTimes.map { $0.displayName(store.appLanguage) }.joined(separator: ", "))
-        }
-    }
-
-    private var facilities: some View {
-        SectionCard(title: store.localized("Facilities", "配套设施")) {
-            FactRow(title: store.localized("Toilets", "厕所"), value: court.hasToilets.displayName(store.appLanguage))
-            FactRow(title: store.localized("Water", "饮水"), value: court.hasDrinkingWater.displayName(store.appLanguage))
-            FactRow(title: store.localized("Parking", "停车"), value: court.hasParking.displayName(store.appLanguage))
-            FactRow(title: store.localized("Changing", "更衣"), value: court.hasChangingRooms.displayName(store.appLanguage))
-        }
-    }
-
-    private var bestForSignals: [CourtFact] {
-        var facts: [CourtFact] = []
-        if court.goodForSolo == .yes {
-            facts.append(CourtFact(label: store.localized("Solo shooting", "适合投篮"), tone: .positive))
-        }
-        if court.goodForPickup == .yes {
-            facts.append(CourtFact(label: store.localized("Pickup runs", "适合野球"), tone: .positive))
-        }
-        if court.goodForTraining == .yes {
-            facts.append(CourtFact(label: store.localized("Training", "训练"), tone: .positive))
-        }
-        if court.beginnerFriendly == .yes {
-            facts.append(CourtFact(label: store.localized("Beginner friendly", "新手友好"), tone: .positive))
-        }
-        if court.courtSpace == .spacious {
-            facts.append(CourtFact(label: store.localized("Good space", "空间充足"), tone: .positive))
-        }
-        if facts.isEmpty {
-            facts.append(CourtFact(label: store.localized("Use facts pending", "用途信息待补充"), tone: .unknown))
-        }
-        return facts
-    }
-
-    private var missingFactsCount: Int {
-        [
-            court.hasLights == .unknown,
-            court.drynessAfterRain == .unknown,
-            court.rainPlayable == .unknown,
-            court.surfaceType == .unknown,
-            court.courtSpace == .unknown,
-            court.hasNets == .unknown,
-            court.rimHeight == .unknown,
-            court.hasToilets == .unknown,
-            court.hasDrinkingWater == .unknown,
-            court.hasParking == .unknown
-        ].filter { $0 }.count
-    }
-
-    private var missingFactsLabel: String {
-        missingFactsCount == 0
-            ? store.localized("Core facts complete", "核心信息已补全")
-            : store.localized("\(missingFactsCount) facts need help", "\(missingFactsCount) 项信息待补充")
     }
 
     private var groupedFactVoteSummaries: [(field: CommunityFactField, summaries: [CourtFactVoteSummary])] {
@@ -424,26 +284,15 @@ struct CourtDetailView: View {
     private func openGoogleMaps() {
         let latitude = court.coordinate.latitude
         let longitude = court.coordinate.longitude
-        let encodedName = court.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "Court"
 
         if let appURL = URL(string: "comgooglemaps://?daddr=\(latitude),\(longitude)&directionsmode=walking") {
             UIApplication.shared.open(appURL) { success in
                 guard !success,
-                      let webURL = URL(string: "https://www.google.com/maps/dir/?api=1&destination=\(latitude),\(longitude)&destination_place_id=\(encodedName)&travelmode=walking") else {
+                      let webURL = URL(string: "https://www.google.com/maps/dir/?api=1&destination=\(latitude),\(longitude)&travelmode=walking") else {
                     return
                 }
                 UIApplication.shared.open(webURL)
             }
         }
-    }
-
-    private func copyAddress() {
-        UIPasteboard.general.string = court.addressLine ?? "\(court.name), \(court.area), \(court.city)"
-        copiedDirectionsMessage = store.localized("Address copied", "地址已复制")
-    }
-
-    private func copyCoordinates() {
-        UIPasteboard.general.string = "\(court.coordinate.latitude), \(court.coordinate.longitude)"
-        copiedDirectionsMessage = store.localized("Coordinates copied", "坐标已复制")
     }
 }

@@ -41,16 +41,10 @@ struct CourtFactUpdateSheetView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             }
 
-                            FactRow(
-                                title: store.localized("Current", "当前"),
-                                value: draft.field.currentValue(for: court, language: store.appLanguage),
-                                tone: .unknown
-                            )
-
                             FlowLayout(spacing: 8) {
                                 ForEach(draft.field.options(store.appLanguage)) { option in
                                     SelectableChip(
-                                        label: option.label(store.appLanguage),
+                                        label: factOptionLabel(option),
                                         isSelected: draft.value == option.value
                                     ) {
                                         draft.value = option.value
@@ -67,6 +61,9 @@ struct CourtFactUpdateSheetView: View {
             .pageBackground()
             .navigationTitle(store.localized("Contribute", "贡献信息"))
             .navigationBarTitleDisplayMode(.inline)
+            .task {
+                await store.loadFactVotes(for: court)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(store.localized("Close", "关闭")) { dismiss() }
@@ -84,6 +81,16 @@ struct CourtFactUpdateSheetView: View {
                 }
             }
         }
+    }
+
+    private func factOptionLabel(_ option: CommunityFactOption) -> String {
+        "\(option.label(store.appLanguage)) · \(voteCount(for: option.value))"
+    }
+
+    private func voteCount(for value: String) -> Int {
+        (store.factVoteSummariesByCourtID[court.id] ?? [])
+            .first { $0.field == draft.field && $0.value == value }?
+            .voteCount ?? 0
     }
 
     @ViewBuilder
@@ -115,7 +122,7 @@ struct CourtVibeVoteSheetView: View {
 
                     SectionCard(title: store.localized("Vote court vibe", "投票球场氛围")) {
                         VStack(alignment: .leading, spacing: 16) {
-                Text(store.localized("This is not live occupancy. It helps players understand the usual run style before they travel. Each label shows how many players chose it.", "这不是实时人数，而是帮助球员了解这个球场平时是什么类型的局。每个标签会显示选择它的人数。"))
+                            Text(store.localized("This is not live occupancy. It helps players understand the usual run style before they travel. Each label shows how many players chose it.", "这不是实时人数，而是帮助球员了解这个球场平时是什么类型的局。每个标签会显示选择它的人数。"))
                                 .font(.subheadline)
                                 .foregroundStyle(.white.opacity(0.64))
 
@@ -143,7 +150,7 @@ struct CourtVibeVoteSheetView: View {
                             FlowLayout(spacing: 8) {
                                 ForEach(selectedCategory.options) { option in
                                     SelectableChip(
-                                        label: option.label(store.appLanguage),
+                                        label: vibeOptionLabel(option),
                                         isSelected: selectedOption == option
                                     ) {
                                         selectedOption = option
@@ -168,6 +175,9 @@ struct CourtVibeVoteSheetView: View {
             .pageBackground()
             .navigationTitle(store.localized("Court vibe", "球场氛围"))
             .navigationBarTitleDisplayMode(.inline)
+            .task {
+                await store.loadVibeSummaries(for: court)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(store.localized("Close", "关闭")) { dismiss() }
@@ -186,6 +196,16 @@ struct CourtVibeVoteSheetView: View {
                 }
             }
         }
+    }
+
+    private func vibeOptionLabel(_ option: CourtVibeOption) -> String {
+        "\(option.label(store.appLanguage)) · \(voteCount(for: option))"
+    }
+
+    private func voteCount(for option: CourtVibeOption) -> Int {
+        (store.vibeSummariesByCourtID[court.id] ?? [])
+            .first { $0.category == selectedCategory && $0.option == option }?
+            .voteCount ?? 0
     }
 }
 

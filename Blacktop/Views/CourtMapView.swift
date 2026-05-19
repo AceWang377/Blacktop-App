@@ -422,9 +422,8 @@ struct CourtMapView: View {
             }
 
             FlowLayout(spacing: 8) {
-                ForEach(court.topFacts(language: store.appLanguage)) { fact in
-                    FactChip(label: fact.label, tone: fact.tone)
-                }
+                FactChip(label: store.localized("Player-voted facts", "玩家投票事实"), tone: .neutral)
+                FactChip(label: court.city, tone: .neutral)
             }
 
             Text(warningText(for: court))
@@ -454,13 +453,7 @@ struct CourtMapView: View {
     }
 
     private func warningText(for court: Court) -> String {
-        if court.drynessAfterRain == .slowToDry || court.drynessAfterRain == .puddlesCommon {
-            return store.copy(.rainWarning)
-        }
-        if court.hasNets == .unknown || court.rimHeight == .unknown {
-            return store.copy(.rimNetWarning)
-        }
-        return store.copy(.readyWarning)
+        store.localized("Open details to see player-voted facts and court vibe.", "打开详情查看玩家投票事实和球场氛围。")
     }
 
     private func openDirections(to court: Court) {
