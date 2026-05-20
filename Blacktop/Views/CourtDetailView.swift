@@ -230,7 +230,7 @@ struct CourtDetailView: View {
     }
 
     private func tagLabel(_ label: String, count: Int) -> String {
-        "\(label) - \(count)"
+        "\(label) \(count)"
     }
 
     private func factVoteCount(field: CommunityFactField, value: String) -> Int {
