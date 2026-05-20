@@ -1,11 +1,11 @@
 # Blacktop App Store Metadata
 
-Last updated: May 19, 2026
+Last updated: May 20, 2026
 
 ## App Information
 
 - App name: Blacktop
-- Subtitle: Court facts, not ratings
+- Subtitle: Basketball court finder
 - Bundle ID: com.acewang.blacktop
 - SKU suggestion: blacktop-ios
 - Primary category: Sports
@@ -16,42 +16,43 @@ Last updated: May 19, 2026
 
 ## App Store Description
 
-Blacktop helps you check basketball courts before you leave.
+Blacktop helps you find basketball courts and check the details before you leave.
 
-Find nearby courts on a clean map and open practical court facts without creating an account. Blacktop focuses on the details that matter before a run: indoor or outdoor, free or paid, lights, surface, rain impact, nets, rim height, rim type, space, cleanliness, facilities, and access notes.
+Find nearby courts on a clean map, filter by practical court details, and open quick directions when you are ready to go. Browsing stays account-free, while Sign in with Apple lets players sync saved courts and vote on court facts.
 
-Court records come from public map data and Blacktop data checks. Source and data notes are available in the app profile, while the map stays focused on finding courts quickly.
+Blacktop focuses on the details players actually need: indoor or outdoor, lights, nets, dry surface, rim height, space, cleanliness, facilities, and court vibe. Community vote counts help show which details have more player signal without turning the app into a ratings feed.
 
-Blacktop is built for quick decisions:
+Blacktop is built for quick basketball decisions:
 
 - Browse the court map without logging in
 - Search courts or areas
 - Filter by outdoor, indoor, free, lights, dry surface, nets, and standard rim
-- Save courts locally on your device
+- Save courts and sync them with Sign in with Apple
+- Vote on practical court facts and court vibe
 - Open walking directions in Apple Maps
 - Review data source information from Profile
 
-No ratings. No social feed. Just court facts.
+No star ratings. No noisy social feed. Just basketball courts, practical facts, saved places, and player-backed signals.
 
 ## Promotional Text
 
-Find basketball courts and check practical court facts before you travel.
+Find basketball courts, filter by useful court facts, and save your regular spots.
 
 ## Keywords
 
-basketball,court,pickup,hoops,sports,map,outdoor,indoor,openstreetmap,uk
+basketball,courts,pickup,hoops,map,outdoor,indoor,nets,lights,playground,sports
 
 ## What's New
 
-Blacktop 1.0 launches as a no-login basketball court map with practical court facts, filters, saved courts, and data source information.
+Blacktop now adds Sign in with Apple for synced saved courts, plus player-voted court facts and court vibe labels.
 
 ## Review Notes
 
-Blacktop does not require a login.
+Blacktop does not require a login for map browsing, search, filtering, court details, or directions.
 
 Location permission is optional. The locate button centers the map on the user's current area while the app is open. Location is not stored by Blacktop.
 
-Court data is read-only in this release.
+Sign in with Apple is optional and is used for synced saved courts and player voting. No demo account is required because the app remains useful without login. Reviewers may use Sign in with Apple to test saved court sync and voting.
 
 Court records come from public map data and Blacktop data checks. Data source information is available in Profile.
 
@@ -72,8 +73,10 @@ Recommended answers for the current release:
 - Tracking: No.
 - Third-party advertising: No.
 - Analytics: No third-party analytics.
-- Account data: Not collected.
-- Saved courts: Stored locally on device, not collected by Blacktop.
+- Account data: Sign in with Apple creates an app account identifier for syncing saved courts and votes.
+- Email address: may be provided by Apple, including private relay, for account display only.
+- Saved courts: synced to the user's account only when signed in.
+- User content: court fact votes and court vibe votes are associated with the signed-in account for app functionality.
 - Precise location: Used on device only to center the map. Not collected by Blacktop.
 
 Conservative note: the hosted court database provider may process network metadata such as IP address and request time for service delivery and security. If App Store Connect requires disclosure based on hosting logs, classify it as data used for app functionality, diagnostics, or security, not tracking.
@@ -84,13 +87,13 @@ Upload 1 to 10 screenshots per required device class.
 
 Recommended first release set:
 
-1. Full-screen court map with nearby court pins and the Blacktop count visible.
-2. Search and filter controls with practical fact chips such as outdoor, free, lights, dry, nets, and standard rim.
-3. Court detail page showing practical facts, default court image, save, and directions.
-4. Saved courts screen showing local saved courts without requiring an account.
-5. Profile page showing total courts, language, saved courts, data sources, support, and terms.
+1. Marketing screenshot: Find courts near you.
+2. Marketing screenshot: Filter by court facts.
+3. Marketing screenshot: Know before you go.
+4. Marketing screenshot: Court details in one place.
+5. Marketing screenshot: Save your favorite courts.
 
-Use screenshots and captions that show only V1 features: map browsing, filters, court details, saved courts, Profile, and data source information.
+Use screenshots and captions that show V2 features already in production: map browsing, filters, court details, saved courts, optional Apple sign-in, player-voted facts, and court vibe labels.
 
 Current required targets for this app:
 
