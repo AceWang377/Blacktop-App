@@ -77,7 +77,14 @@ struct CourtMapView: View {
         let regionCourts = visibleCourts
             .filter { mapRegion.contains($0.coordinate, padding: 0.18) }
             .sorted {
-                mapRegion.center.distance(to: $0.coordinate) < mapRegion.center.distance(to: $1.coordinate)
+                if store.filters.isActive {
+                    let leftScore = store.filterSortScore(for: $0)
+                    let rightScore = store.filterSortScore(for: $1)
+                    if leftScore != rightScore {
+                        return leftScore > rightScore
+                    }
+                }
+                return mapRegion.center.distance(to: $0.coordinate) < mapRegion.center.distance(to: $1.coordinate)
             }
 
         var courts = Array(regionCourts.prefix(360))

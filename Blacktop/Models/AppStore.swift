@@ -40,6 +40,7 @@ final class AppStore: ObservableObject {
     private let supabaseCommunityService = SupabaseCommunityService()
     private var loadedRemoteRegions: [MKCoordinateRegion] = []
     private var remoteLoadGeneration = 0
+    private var loadedCommunitySignalCourtIDs: Set<String> = []
 
     init(courts: [Court] = CourtSeedStore.loadCourts()) {
         let cachedCourts = CourtDiskCache.load()
@@ -59,7 +60,23 @@ final class AppStore: ObservableObject {
     }
 
     var filteredCourts: [Court] {
-        courts.filter { filters.matches($0) }
+        guard filters.isActive else { return courts }
+        return courts
+            .compactMap { court -> (court: Court, score: Int)? in
+                let evaluation = filterEvaluation(for: court)
+                guard evaluation.isIncluded else { return nil }
+                return (court, evaluation.score)
+            }
+            .sorted {
+                if $0.score == $1.score {
+                    if $0.court.city == $1.court.city {
+                        return $0.court.name.localizedCaseInsensitiveCompare($1.court.name) == .orderedAscending
+                    }
+                    return $0.court.city.localizedCaseInsensitiveCompare($1.court.city) == .orderedAscending
+                }
+                return $0.score > $1.score
+            }
+            .map(\.court)
     }
 
     var savedCourts: [Court] {
@@ -115,6 +132,7 @@ final class AppStore: ObservableObject {
             guard generation == remoteLoadGeneration else { return }
             guard !remoteCourts.isEmpty else { return }
             courts = remoteCourts
+            await loadCommunitySignals(for: remoteCourts)
             courtDataSource = "Supabase"
             selectedCourt = selectedCourt.flatMap { selected in
                 remoteCourts.first { $0.id == selected.id }
@@ -143,6 +161,7 @@ final class AppStore: ObservableObject {
             guard generation == remoteLoadGeneration else { return }
             guard !remoteCourts.isEmpty else { return }
             mergeRemoteCourts(remoteCourts)
+            await loadCommunitySignals(for: remoteCourts)
             loadedRemoteRegions.append(region.expanded(by: 0.45))
             courtDataSource = "Supabase area"
             selectedCourt = selectedCourt.flatMap { selected in
@@ -263,6 +282,10 @@ final class AppStore: ObservableObject {
         }
     }
 
+    func filterSortScore(for court: Court) -> Int {
+        filterEvaluation(for: court).score
+    }
+
     private func persistSavedCourts() {
         UserDefaults.standard.set(Array(savedCourtIDs), forKey: savedKey)
     }
@@ -291,6 +314,30 @@ final class AppStore: ObservableObject {
         } catch {
             communityMessage = localized("Signed in. Saved courts will sync later.", "已登录，收藏球场稍后同步。")
             print("Blacktop saved court merge failed: \(error)")
+        }
+    }
+
+    private func loadCommunitySignals(for courts: [Court]) async {
+        let idsToLoad = courts
+            .map(\.id)
+            .filter { !loadedCommunitySignalCourtIDs.contains($0) }
+        guard !idsToLoad.isEmpty else { return }
+
+        do {
+            async let factSummaries = supabaseCommunityService.fetchFactVoteSummaries(courtIDs: idsToLoad)
+            async let vibeSummaries = supabaseCommunityService.fetchVibeSummaries(courtIDs: idsToLoad)
+            let loadedFacts = try await factSummaries
+            let loadedVibes = try await vibeSummaries
+
+            for (courtID, summaries) in Dictionary(grouping: loadedFacts, by: \.courtID) {
+                factVoteSummariesByCourtID[courtID] = summaries
+            }
+            for (courtID, summaries) in Dictionary(grouping: loadedVibes, by: \.courtID) {
+                vibeSummariesByCourtID[courtID] = summaries
+            }
+            loadedCommunitySignalCourtIDs.formUnion(idsToLoad)
+        } catch {
+            print("Blacktop community signal load failed: \(error)")
         }
     }
 
@@ -440,6 +487,183 @@ final class AppStore: ObservableObject {
     private static func percentage(count: Int, total: Int) -> Int {
         guard total > 0 else { return 0 }
         return Int((Double(count) / Double(total) * 100).rounded())
+    }
+
+    private struct FilterEvaluation {
+        var isIncluded: Bool
+        var score: Int
+    }
+
+    private enum FilterConditionResult {
+        case match(Int)
+        case unknown
+        case excluded
+    }
+
+    private func filterEvaluation(for court: Court) -> FilterEvaluation {
+        guard filters.isActive else {
+            return FilterEvaluation(isIncluded: true, score: 0)
+        }
+
+        var score = 0
+        for result in filterConditionResults(for: court) {
+            switch result {
+            case .match(let value):
+                score += value
+            case .unknown:
+                score += 1
+            case .excluded:
+                return FilterEvaluation(isIncluded: false, score: 0)
+            }
+        }
+
+        return FilterEvaluation(isIncluded: true, score: score)
+    }
+
+    private func filterConditionResults(for court: Court) -> [FilterConditionResult] {
+        var results: [FilterConditionResult] = []
+
+        if filters.outdoor || filters.indoor {
+            var desiredValues: Set<String> = []
+            if filters.outdoor { desiredValues.insert("outdoor") }
+            if filters.indoor { desiredValues.insert("indoor") }
+            results.append(evaluateFactFilter(
+                courtID: court.id,
+                field: .courtType,
+                desiredValues: desiredValues,
+                staticValue: court.courtType.rawValue,
+                staticUnknown: court.courtType == .unknown,
+                staticMatch: court.courtType == .mixed || desiredValues.contains(court.courtType.rawValue)
+            ))
+        }
+
+        if filters.free {
+            results.append(evaluateFactFilter(
+                courtID: court.id,
+                field: .priceType,
+                desiredValues: ["free"],
+                staticValue: court.priceType.rawValue,
+                staticUnknown: court.priceType == .unknown,
+                staticMatch: court.priceType == .free
+            ))
+        }
+
+        if filters.lights {
+            results.append(evaluateFactFilter(
+                courtID: court.id,
+                field: .hasLights,
+                desiredValues: ["yes"],
+                staticValue: court.hasLights.rawValue,
+                staticUnknown: court.hasLights == .unknown,
+                staticMatch: court.hasLights == .yes
+            ))
+        }
+
+        if filters.dryAfterRain {
+            results.append(evaluateFactFilter(
+                courtID: court.id,
+                field: .drynessAfterRain,
+                desiredValues: ["driesFast", "indoorUnaffected"],
+                staticValue: court.drynessAfterRain.rawValue,
+                staticUnknown: court.drynessAfterRain == .unknown,
+                staticMatch: court.drynessAfterRain == .driesFast || court.drynessAfterRain == .indoorUnaffected
+            ))
+        }
+
+        if filters.nets {
+            results.append(evaluateFactFilter(
+                courtID: court.id,
+                field: .hasNets,
+                desiredValues: ["all", "some"],
+                staticValue: court.hasNets.rawValue,
+                staticUnknown: court.hasNets == .unknown,
+                staticMatch: court.hasNets == .all || court.hasNets == .some
+            ))
+        }
+
+        if filters.standardRim {
+            results.append(evaluateFactFilter(
+                courtID: court.id,
+                field: .rimHeight,
+                desiredValues: ["standard"],
+                staticValue: court.rimHeight.rawValue,
+                staticUnknown: court.rimHeight == .unknown,
+                staticMatch: court.rimHeight == .standard
+            ))
+        }
+
+        if filters.solo {
+            results.append(evaluateVibeFilter(
+                courtID: court.id,
+                category: .bestFor,
+                desiredOptions: [.soloShooting],
+                staticUnknown: court.goodForSolo == .unknown,
+                staticMatch: court.goodForSolo == .yes
+            ))
+        }
+
+        return results
+    }
+
+    private func evaluateFactFilter(
+        courtID: String,
+        field: CommunityFactField,
+        desiredValues: Set<String>,
+        staticValue: String,
+        staticUnknown: Bool,
+        staticMatch: Bool
+    ) -> FilterConditionResult {
+        let fieldSummaries = (factVoteSummariesByCourtID[courtID] ?? []).filter { $0.field == field }
+        if !fieldSummaries.isEmpty {
+            let maxVotes = fieldSummaries.map(\.voteCount).max() ?? 0
+            let winningDesiredVotes = fieldSummaries
+                .filter { desiredValues.contains($0.value) && $0.voteCount == maxVotes }
+                .map(\.voteCount)
+                .max()
+
+            if let winningDesiredVotes {
+                return .match(40 + winningDesiredVotes)
+            }
+            return .excluded
+        }
+
+        if staticMatch {
+            return .match(12)
+        }
+        if staticUnknown || staticValue == "unknown" {
+            return .unknown
+        }
+        return .excluded
+    }
+
+    private func evaluateVibeFilter(
+        courtID: String,
+        category: CourtVibeCategory,
+        desiredOptions: Set<CourtVibeOption>,
+        staticUnknown: Bool,
+        staticMatch: Bool
+    ) -> FilterConditionResult {
+        let categorySummaries = (vibeSummariesByCourtID[courtID] ?? []).filter { $0.category == category }
+        if !categorySummaries.isEmpty {
+            let maxVotes = categorySummaries.map(\.voteCount).max() ?? 0
+            let winningDesiredVotes = categorySummaries
+                .filter { desiredOptions.contains($0.option) && $0.voteCount == maxVotes }
+                .map(\.voteCount)
+                .max()
+
+            if let winningDesiredVotes {
+                return .match(40 + winningDesiredVotes)
+            }
+            return .excluded
+        }
+
+        if staticMatch {
+            return .match(12)
+        }
+        if staticUnknown {
+            return .unknown
+        }
+        return .excluded
     }
 
     private func mergeRemoteCourts(_ remoteCourts: [Court]) {

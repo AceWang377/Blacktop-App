@@ -143,6 +143,34 @@ struct SupabaseCommunityService {
         return rows.compactMap(\.summary)
     }
 
+    func fetchFactVoteSummaries(courtIDs: [String]) async throws -> [CourtFactVoteSummary] {
+        let uniqueIDs = Array(Set(courtIDs)).sorted()
+        guard !uniqueIDs.isEmpty else { return [] }
+
+        var summaries: [CourtFactVoteSummary] = []
+        for chunk in uniqueIDs.chunked(into: 70) {
+            var components = URLComponents(
+                url: SupabaseConfig.projectURL.appending(path: "/rest/v1/court_fact_vote_summaries"),
+                resolvingAgainstBaseURL: false
+            )
+            components?.queryItems = [
+                URLQueryItem(name: "select", value: "*"),
+                URLQueryItem(name: "court_id", value: "in.(\(Self.postgrestInList(chunk)))"),
+                URLQueryItem(name: "order", value: "field_key.asc,percentage.desc")
+            ]
+            guard let url = components?.url else {
+                throw SupabaseCommunityError.invalidURL
+            }
+
+            var request = URLRequest(url: url)
+            applyRESTHeaders(to: &request, accessToken: SupabaseConfig.publishableKey)
+            let rows: [CourtFactVoteSummaryDTO] = try await performDecodedRequest(request)
+            summaries.append(contentsOf: rows.compactMap(\.summary))
+        }
+
+        return summaries
+    }
+
     func fetchUserFactVotes(courtID: String, session: ContributorSession?) async throws -> [CourtFactUserVote] {
         guard let session else { return [] }
         var components = URLComponents(
@@ -182,6 +210,34 @@ struct SupabaseCommunityService {
         applyRESTHeaders(to: &request, accessToken: SupabaseConfig.publishableKey)
         let rows: [CourtVibeSummaryDTO] = try await performDecodedRequest(request)
         return rows.compactMap(\.summary)
+    }
+
+    func fetchVibeSummaries(courtIDs: [String]) async throws -> [CourtVibeSummary] {
+        let uniqueIDs = Array(Set(courtIDs)).sorted()
+        guard !uniqueIDs.isEmpty else { return [] }
+
+        var summaries: [CourtVibeSummary] = []
+        for chunk in uniqueIDs.chunked(into: 70) {
+            var components = URLComponents(
+                url: SupabaseConfig.projectURL.appending(path: "/rest/v1/court_vibe_summaries"),
+                resolvingAgainstBaseURL: false
+            )
+            components?.queryItems = [
+                URLQueryItem(name: "select", value: "*"),
+                URLQueryItem(name: "court_id", value: "in.(\(Self.postgrestInList(chunk)))"),
+                URLQueryItem(name: "order", value: "category.asc,percentage.desc")
+            ]
+            guard let url = components?.url else {
+                throw SupabaseCommunityError.invalidURL
+            }
+
+            var request = URLRequest(url: url)
+            applyRESTHeaders(to: &request, accessToken: SupabaseConfig.publishableKey)
+            let rows: [CourtVibeSummaryDTO] = try await performDecodedRequest(request)
+            summaries.append(contentsOf: rows.compactMap(\.summary))
+        }
+
+        return summaries
     }
 
     func fetchUserVibeVotes(courtID: String, session: ContributorSession?) async throws -> [CourtVibeUserVote] {
@@ -338,6 +394,24 @@ struct SupabaseCommunityService {
         guard 200..<300 ~= httpResponse.statusCode else {
             let message = String(data: data, encoding: .utf8) ?? "No response body"
             throw SupabaseCommunityError.requestFailed(statusCode: httpResponse.statusCode, message: message)
+        }
+    }
+
+    private static func postgrestInList(_ values: [String]) -> String {
+        values
+            .map { value in
+                let escaped = value.replacingOccurrences(of: "\"", with: "\\\"")
+                return "\"\(escaped)\""
+            }
+            .joined(separator: ",")
+    }
+}
+
+private extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        guard size > 0 else { return [self] }
+        return stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
         }
     }
 }
