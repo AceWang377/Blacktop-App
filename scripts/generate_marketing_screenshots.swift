@@ -71,7 +71,7 @@ let sets = [
     ScreenshotSet(
         name: "iPhone 6.9-inch",
         canvas: CGSize(width: 1320, height: 2868),
-        sourceRoot: "docs/app-store/screenshots/iphone-6-9",
+        sourceRoot: "docs/app-store/screenshots/real/iphone-6-5",
         outputRoot: "iphone-6-9",
         logoSize: 92,
         specs: iphoneSpecs
