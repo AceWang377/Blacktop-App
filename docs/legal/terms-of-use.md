@@ -1,6 +1,6 @@
 # Blacktop Terms of Use
 
-Effective date: May 13, 2026
+Effective date: May 20, 2026
 
 By using Blacktop, you agree to these terms.
 
@@ -20,9 +20,11 @@ You should verify opening hours, access rules, safety, fees, booking requirement
 
 Location and directions are provided for convenience only. Blacktop is not responsible for route accuracy, access restrictions, court closures, weather, injury, damage, or loss.
 
-## No Account
+## Accounts, Saved Courts, and Votes
 
-This release does not require a user account. Saved courts are stored locally on your device.
+Blacktop does not require an account for browsing. If you choose to sign in with Apple, saved courts and court fact or vibe votes may be synced to your account.
+
+Community vote counts are informational signals only. They may be incomplete, subjective, outdated, or based on limited input.
 
 ## Acceptable Use
 

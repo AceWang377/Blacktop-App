@@ -1,12 +1,22 @@
 # Blacktop Privacy Policy
 
-Effective date: May 13, 2026
+Effective date: May 20, 2026
 
-Blacktop is a read-only basketball court map. The app is designed to work without an account.
+Blacktop is a basketball court finder. The app is designed to let users browse without an account, while optional Sign in with Apple supports synced saved courts and player voting.
+
+## Browsing Without an Account
+
+You can browse the map, search courts, view court details, use filters, and open directions without creating an account.
+
+## Sign in with Apple
+
+If you choose to sign in with Apple, Blacktop receives an app-specific account identifier from Apple. Apple may also provide an email address or private relay email depending on your Apple settings.
+
+Blacktop uses this account information only to sync saved courts and associate your court fact and court vibe votes with your account.
 
 ## Information Blacktop Does Not Collect
 
-Blacktop does not require registration and does not ask for your name, email address, phone number, payment details, contacts, photos, or advertising identifiers.
+Blacktop does not ask for your phone number, payment details, contacts, photos, advertising identifiers, or public profile information.
 
 ## Location
 
@@ -18,7 +28,11 @@ You can disable location access at any time in iOS Settings.
 
 ## Saved Courts
 
-Saved courts are stored locally on your device. They are not uploaded to a Blacktop account or synced to a server in this release.
+If you are not signed in, saved courts are stored locally on your device. If you sign in with Apple, saved court IDs are synced to your account so they can follow you across devices.
+
+## Votes
+
+If you sign in and vote on court facts or court vibe labels, Blacktop stores your vote with your account ID and the relevant court ID. Aggregate vote counts may be shown to other users, but your personal identity is not displayed in the app.
 
 ## Court Data
 
@@ -40,7 +54,7 @@ Blacktop is not directed at children under 13 and does not knowingly collect per
 
 ## Changes
 
-If Blacktop adds accounts, submissions, analytics, payments, or other data collection in the future, this policy and the App Store privacy answers should be updated before release.
+If Blacktop adds public profiles, chat, payments, advertising, or additional analytics in the future, this policy and the App Store privacy answers should be updated before release.
 
 ## Contact
 

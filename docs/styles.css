@@ -50,6 +50,20 @@ a:hover {
   gap: 18px;
 }
 
+.marketing-hero {
+  min-height: 74vh;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 430px);
+  align-items: center;
+  gap: 34px;
+}
+
+.hero-shot {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  box-shadow: 0 34px 80px rgba(0, 0, 0, 0.36);
+}
+
 .eyebrow,
 .back {
   display: inline-flex;
@@ -144,6 +158,21 @@ p {
   margin-top: 16px;
 }
 
+.screenshot-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.screenshot-strip img {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: rgba(0, 0, 0, 0.20);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24);
+}
+
 .site-footer {
   display: flex;
   flex-wrap: wrap;
@@ -167,7 +196,19 @@ p {
     padding: 54px 0 34px;
   }
 
+  .marketing-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-shot {
+    max-width: 360px;
+  }
+
   .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .screenshot-strip {
     grid-template-columns: 1fr;
   }
 }
