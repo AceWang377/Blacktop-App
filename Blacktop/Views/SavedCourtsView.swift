@@ -12,7 +12,9 @@ struct SavedCourtsView: View {
                         Text(store.localized("Saved courts", "收藏球场"))
                             .font(.system(size: 38, weight: .black, design: .rounded))
                             .foregroundStyle(.white)
-                        Text(store.localized("Quickly check your regular spots. Saved courts stay on this device.", "快速查看你常去的球场。收藏内容只保存在本机。"))
+                        Text(store.contributorSession == nil
+                             ? store.localized("Quickly check your regular spots. Saved courts stay on this device.", "快速查看你常去的球场。收藏内容只保存在本机。")
+                             : store.localized("Quickly check your regular spots. Saved courts sync with your account.", "快速查看你常去的球场。收藏内容会同步到你的账号。"))
                             .font(.body.weight(.medium))
                             .foregroundStyle(.white.opacity(0.66))
                     }
@@ -48,7 +50,9 @@ struct SavedCourtsView: View {
             Text(store.localized("Save courts you want to check again.", "收藏你想再次查看的球场。"))
                 .font(.title2.weight(.black))
                 .foregroundStyle(.white)
-            Text(store.localized("No account needed. Your list is local to this device.", "无需账号。你的列表只保存在这台设备上。"))
+            Text(store.contributorSession == nil
+                 ? store.localized("No account needed. Your list is local to this device.", "无需账号。你的列表只保存在这台设备上。")
+                 : store.localized("Saved courts will appear here and sync with your account.", "收藏球场会显示在这里，并同步到你的账号。"))
                 .foregroundStyle(.white.opacity(0.62))
         }
         .padding(22)

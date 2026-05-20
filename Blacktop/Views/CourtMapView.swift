@@ -26,6 +26,7 @@ struct CourtMapView: View {
     @State private var hasStartedInitialLoad = false
     @State private var isChromeVisible = false
     @State private var pendingMapLoadTask: Task<Void, Never>?
+    @State private var searchResultMessage: String?
     @FocusState private var isSearchFocused: Bool
 
     private let maximumQueryableLatitudeDelta = 1.6
@@ -76,7 +77,14 @@ struct CourtMapView: View {
         let regionCourts = visibleCourts
             .filter { mapRegion.contains($0.coordinate, padding: 0.18) }
             .sorted {
-                mapRegion.center.distance(to: $0.coordinate) < mapRegion.center.distance(to: $1.coordinate)
+                if store.filters.isActive {
+                    let leftScore = store.filterSortScore(for: $0)
+                    let rightScore = store.filterSortScore(for: $1)
+                    if leftScore != rightScore {
+                        return leftScore > rightScore
+                    }
+                }
+                return mapRegion.center.distance(to: $0.coordinate) < mapRegion.center.distance(to: $1.coordinate)
             }
 
         var courts = Array(regionCourts.prefix(360))
@@ -225,6 +233,7 @@ struct CourtMapView: View {
 
             searchBar
             searchAreaButton
+            searchResultPill
             mapScaleHintPill
             filterChips
         }
@@ -282,6 +291,7 @@ struct CourtMapView: View {
                 Button {
                     HLHaptics.light()
                     searchText = ""
+                    searchResultMessage = nil
                     store.selectedCourt = nil
                 } label: {
                     Image(systemName: "xmark.circle.fill")
@@ -298,6 +308,20 @@ struct CourtMapView: View {
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(.white.opacity(0.13), lineWidth: 1)
+        }
+    }
+
+    @ViewBuilder
+    private var searchResultPill: some View {
+        if let searchResultMessage {
+            Label(searchResultMessage, systemImage: "scope")
+                .font(.caption.weight(.black))
+                .foregroundStyle(HLColor.night)
+                .padding(.horizontal, 12)
+                .frame(height: 34)
+                .background(HLColor.freshGreen)
+                .clipShape(Capsule())
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
         }
     }
 
@@ -405,9 +429,8 @@ struct CourtMapView: View {
             }
 
             FlowLayout(spacing: 8) {
-                ForEach(court.topFacts(language: store.appLanguage)) { fact in
-                    FactChip(label: fact.label, tone: fact.tone)
-                }
+                FactChip(label: store.localized("Player-voted facts", "玩家投票事实"), tone: .neutral)
+                FactChip(label: court.city, tone: .neutral)
             }
 
             Text(warningText(for: court))
@@ -437,13 +460,7 @@ struct CourtMapView: View {
     }
 
     private func warningText(for court: Court) -> String {
-        if court.drynessAfterRain == .slowToDry || court.drynessAfterRain == .puddlesCommon {
-            return store.copy(.rainWarning)
-        }
-        if court.hasNets == .unknown || court.rimHeight == .unknown {
-            return store.copy(.rimNetWarning)
-        }
-        return store.copy(.readyWarning)
+        store.localized("Open details to see player-voted facts and court vibe.", "打开详情查看玩家投票事实和球场氛围。")
     }
 
     private func openDirections(to court: Court) {
@@ -470,6 +487,7 @@ struct CourtMapView: View {
         if let summary = matchingCountrySummary(for: query) {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                 searchText = ""
+                searchResultMessage = "\(summary.displayName) · \(summary.countLabel)"
                 focusMap(on: summary)
             }
             await loadRemoteCourtsIfQueryable(in: mapRegion, force: true)
@@ -487,6 +505,7 @@ struct CourtMapView: View {
                 store.selectedCourt = nil
             }
             await loadRemoteCourtsIfQueryable(in: region, force: true)
+            searchResultMessage = store.localized("\(cityMatches.count) courts found", "找到 \(cityMatches.count) 个球场")
             return
         }
 
@@ -499,6 +518,7 @@ struct CourtMapView: View {
                 store.selectedCourt = exactMatches.count == 1 ? exactMatches[0] : nil
             }
             await loadRemoteCourtsIfQueryable(in: region, force: true)
+            searchResultMessage = store.localized("\(exactMatches.count) court found", "找到 \(exactMatches.count) 个球场")
             return
         }
 
@@ -514,6 +534,7 @@ struct CourtMapView: View {
                 store.selectedCourt = nil
             }
             await loadRemoteCourtsIfQueryable(in: region, force: true)
+            searchResultMessage = store.localized("Showing courts near \(query)", "正在显示 \(query) 附近球场")
             return
         }
 
@@ -525,6 +546,9 @@ struct CourtMapView: View {
                 store.selectedCourt = nil
             }
             await loadRemoteCourtsIfQueryable(in: region, force: true)
+            searchResultMessage = store.localized("\(matches.count) courts found", "找到 \(matches.count) 个球场")
+        } else {
+            searchResultMessage = store.localized("No courts found nearby", "附近未找到球场")
         }
     }
 
@@ -535,6 +559,7 @@ struct CourtMapView: View {
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
             searchRegion = region
             searchText = ""
+            searchResultMessage = store.localized("Showing this map area", "正在显示当前地图区域")
             store.selectedCourt = nil
         }
         await loadRemoteCourtsIfQueryable(in: region, force: force)
@@ -557,6 +582,7 @@ struct CourtMapView: View {
         mapRegion = region
         guard isQueryable(region) else {
             pendingMapLoadTask?.cancel()
+            searchResultMessage = nil
             return
         }
         scheduleAutomaticAreaLoad(for: region)
