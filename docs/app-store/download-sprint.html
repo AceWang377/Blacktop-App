@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blacktop Download Sprint</title>
+  <meta name="description" content="A same-day outreach console for getting three real Blacktop Basketball downloads.">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <main class="page sprint-page">
+    <a class="back" href="../">Back to Blacktop</a>
+
+    <section class="hero sprint-hero">
+      <div>
+        <h1>3 real downloads today.</h1>
+        <p class="lead">Use this page to copy messages, send the right asset, and track confirmed downloads from people who actually play basketball.</p>
+        <div class="actions">
+          <a class="button primary" href="https://apps.apple.com/gb/app/blacktop-basketball/id6769562571">Open App Store</a>
+          <a class="button" href="https://acewang377.github.io/Blacktop-App/download/?src=sprint">Open download page</a>
+          <a class="button" href="./social/current/instagram-story.png" download>Download Story</a>
+          <a class="button" href="./social/current/qr-app-store.png" download>Download QR</a>
+        </div>
+      </div>
+      <img class="sprint-qr" src="./social/current/qr-app-store.png" alt="QR code for the Blacktop Basketball App Store page">
+    </section>
+
+    <section class="progress-board" aria-label="Download sprint progress">
+      <article>
+        <span id="sent-count">0</span>
+        <p>Messages sent</p>
+      </article>
+      <article>
+        <span id="reply-count">0</span>
+        <p>Replies</p>
+      </article>
+      <article>
+        <span id="download-count">0</span>
+        <p>Downloads confirmed</p>
+      </article>
+    </section>
+
+    <section class="quick-send">
+      <div>
+        <h2>Send Now</h2>
+        <p>Use native share on your phone, post to WhatsApp/X, or email two local Sheffield basketball contacts.</p>
+      </div>
+      <div class="send-grid">
+          <button id="native-share" class="copy-button" type="button">Share download page</button>
+        <a id="whatsapp-share" class="button" href="#">WhatsApp</a>
+        <a id="x-share" class="button" href="#">X / Twitter</a>
+        <a id="sbl-mail" class="button" href="#">Email SBL</a>
+        <a id="hallam-mail" class="button" href="#">Email Hallam Sport</a>
+        <a class="button" href="./outreach-targets-2026-05-29.md">Target list</a>
+      </div>
+    </section>
+
+    <section class="copy-grid">
+      <article class="copy-card">
+        <h2>Direct Message</h2>
+        <p>Best for friends, teammates, and anyone who plays pickup.</p>
+        <textarea readonly>Hey, I just launched Blacktop Basketball on the App Store.
+
+It helps you find nearby basketball courts, filter useful details like lights/nets/indoor/outdoor, save regular spots, and open directions quickly.
+
+Could you download it today and try one court near you? It is free:
+https://apps.apple.com/gb/app/blacktop-basketball/id6769562571
+
+After opening it, please reply "done" so I can count real downloads. If something feels off, tell me directly.</textarea>
+        <button class="copy-button" type="button">Copy</button>
+      </article>
+
+      <article class="copy-card">
+        <h2>Group Chat</h2>
+        <p>Use in WhatsApp, WeChat, Discord, and basketball society chats.</p>
+        <textarea readonly>I just launched Blacktop Basketball, a free iPhone/iPad app for finding basketball courts near you.
+
+You can browse without an account, filter by useful court details like lights, nets, indoor/outdoor, dry surface, and save courts if you sign in with Apple.
+
+App Store:
+https://apps.apple.com/gb/app/blacktop-basketball/id6769562571
+
+I am looking for a few real players to try it today. Please reply "done" after opening it so I can count real downloads.</textarea>
+        <button class="copy-button" type="button">Copy</button>
+      </article>
+
+      <article class="copy-card">
+        <h2>Chinese Message</h2>
+        <p>Use for WeChat, Xiaohongshu comments, or Chinese student groups.</p>
+        <textarea readonly>我刚上线了一个 iOS app：Blacktop Basketball。
+
+它可以帮你找附近的篮球场，筛选灯光、篮网、室内/室外、场地状态等实用信息，还可以保存常去的球场并快速打开 Apple Maps 导航。浏览不需要注册，免费。
+
+App Store 下载：
+https://apps.apple.com/gb/app/blacktop-basketball/id6769562571
+
+我今天想先拿到 3 个真实下载和反馈。如果你平时打球，能不能帮我下载打开一下？打开后回复我 “done/已下载”，我好统计真实下载。</textarea>
+        <button class="copy-button" type="button">Copy</button>
+      </article>
+    </section>
+
+    <section class="sprint-assets">
+      <div>
+        <h2>Send These Assets</h2>
+        <p>Story for social posts, square image for feeds, QR for courts or in-person asks.</p>
+      </div>
+      <div class="asset-grid">
+        <a href="./social/current/instagram-story.png" download>
+          <img src="./social/current/instagram-story.png" alt="Blacktop Story asset">
+          <span>Story</span>
+        </a>
+        <a href="./social/current/square-post.png" download>
+          <img src="./social/current/square-post.png" alt="Blacktop square post asset">
+          <span>Square Post</span>
+        </a>
+        <a href="./social/current/print-flyer.png" download>
+          <img src="./social/current/print-flyer.png" alt="Blacktop flyer asset">
+          <span>Flyer</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="tracker">
+      <div>
+        <h2>12-Person Outreach Tracker</h2>
+        <p>Write names or channels, then tick each step. Data stays in this browser only.</p>
+        <div class="actions compact-actions">
+          <button id="export-csv" class="copy-button" type="button">Export CSV</button>
+          <button id="clear-completed" class="copy-button subtle" type="button">Clear confirmed rows</button>
+        </div>
+      </div>
+      <div class="tracker-table" role="table" aria-label="Outreach tracker">
+        <div class="tracker-row tracker-head" role="row">
+          <span>Name / channel</span>
+          <span>Sent</span>
+          <span>Replied</span>
+          <span>Downloaded</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const appStoreUrl = 'https://apps.apple.com/gb/app/blacktop-basketball/id6769562571';
+    const publicDownloadUrl = 'https://acewang377.github.io/Blacktop-App/download/';
+    const dmDownloadUrl = appStoreUrl;
+    const groupDownloadUrl = appStoreUrl;
+    const clubDownloadUrl = appStoreUrl;
+    const shareDownloadUrl = `${publicDownloadUrl}?src=share`;
+    const shareMessage = `I just launched Blacktop Basketball, a free iPhone/iPad app for finding basketball courts near you.\n\nMap, filters, saved courts, directions, and player-backed court details.\n\nDownload:\n${groupDownloadUrl}\n\nAfter opening it, please reply "done" so I can count real downloads.`;
+    const adminMessage = `Hi, I recently launched a free iPhone/iPad app called Blacktop Basketball:\n${clubDownloadUrl}\n\nIt helps players find basketball courts, filter practical details like lights/nets/indoor/outdoor, save courts, and open directions. Browsing does not require an account.\n\nWould any of your players be willing to try it and tell me whether the court info is useful or missing anything around Sheffield? I am looking for a few real basketball users today, not paid promotion.`;
+    const rows = 12;
+    const table = document.querySelector('.tracker-table');
+    const storageKey = 'blacktop-download-sprint-v1';
+    const state = JSON.parse(localStorage.getItem(storageKey) || '{}');
+
+    document.getElementById('whatsapp-share').href = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
+    document.getElementById('x-share').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Find basketball courts before you leave. Blacktop Basketball is free on iPhone/iPad.')}&url=${encodeURIComponent(appStoreUrl)}`;
+    document.getElementById('sbl-mail').href = `mailto:info@sheffieldbasketball.co.uk?subject=${encodeURIComponent('Blacktop Basketball court finder feedback')}&body=${encodeURIComponent(adminMessage)}`;
+    document.getElementById('hallam-mail').href = `mailto:sport@shu.ac.uk?subject=${encodeURIComponent('Blacktop Basketball court finder feedback')}&body=${encodeURIComponent(adminMessage)}`;
+
+    function save() {
+      localStorage.setItem(storageKey, JSON.stringify(state));
+      updateCounts();
+    }
+
+    function updateCounts() {
+      const values = Object.values(state);
+      const sent = values.filter((row) => row.sent).length;
+      const replied = values.filter((row) => row.replied).length;
+      const downloaded = values.filter((row) => row.downloaded).length;
+      document.getElementById('sent-count').textContent = sent;
+      document.getElementById('reply-count').textContent = replied;
+      document.getElementById('download-count').textContent = downloaded;
+    }
+
+    function rowsAsArray() {
+      return Array.from({ length: rows }, (_, index) => {
+        const id = `row-${index}`;
+        return {
+          name: state[id]?.name || '',
+          sent: Boolean(state[id]?.sent),
+          replied: Boolean(state[id]?.replied),
+          downloaded: Boolean(state[id]?.downloaded)
+        };
+      });
+    }
+
+    function exportCsv() {
+      const header = ['name_or_channel', 'sent', 'replied', 'downloaded'];
+      const lines = [
+        header.join(','),
+        ...rowsAsArray().map((row) => header.map((key) => `"${String(row[key]).replaceAll('"', '""')}"`).join(','))
+      ];
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'blacktop-download-sprint.csv';
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function copyText(text, sourceTextarea) {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          return 'copied';
+        }
+      } catch (error) {
+        // Fall through to the legacy path. file:// and embedded browsers often
+        // expose navigator.clipboard but reject writes.
+      }
+
+      const scratch = document.createElement('textarea');
+      scratch.value = text;
+      scratch.setAttribute('readonly', '');
+      scratch.style.position = 'fixed';
+      scratch.style.top = '0';
+      scratch.style.left = '-9999px';
+      scratch.style.opacity = '0';
+      document.body.appendChild(scratch);
+      scratch.focus();
+      scratch.select();
+      scratch.setSelectionRange(0, scratch.value.length);
+
+      let copied = false;
+      try {
+        copied = document.execCommand('copy');
+      } catch (error) {
+        copied = false;
+      }
+      document.body.removeChild(scratch);
+
+      if (copied) {
+        return 'copied';
+      }
+
+      if (sourceTextarea) {
+        sourceTextarea.focus();
+        sourceTextarea.select();
+        sourceTextarea.setSelectionRange(0, sourceTextarea.value.length);
+      }
+      return 'selected';
+    }
+
+    function showCopyStatus(button, status, originalText) {
+      button.textContent = status === 'copied' ? 'Copied' : 'Selected - press Cmd+C';
+      setTimeout(() => {
+        button.textContent = originalText;
+      }, status === 'copied' ? 1200 : 2600);
+    }
+
+    for (let index = 0; index < rows; index += 1) {
+      const id = `row-${index}`;
+      state[id] = state[id] || {};
+      const row = document.createElement('div');
+      row.className = 'tracker-row';
+      row.setAttribute('role', 'row');
+      row.innerHTML = `
+        <input aria-label="Name or channel ${index + 1}" placeholder="${index + 1}. Name or channel" value="${state[id].name || ''}">
+        <label><input type="checkbox" data-field="sent" ${state[id].sent ? 'checked' : ''}> Sent</label>
+        <label><input type="checkbox" data-field="replied" ${state[id].replied ? 'checked' : ''}> Reply</label>
+        <label><input type="checkbox" data-field="downloaded" ${state[id].downloaded ? 'checked' : ''}> Download</label>
+      `;
+
+      const name = row.querySelector('input[aria-label]');
+      name.addEventListener('input', () => {
+        state[id].name = name.value;
+        save();
+      });
+
+      row.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+        checkbox.addEventListener('change', () => {
+          state[id][checkbox.dataset.field] = checkbox.checked;
+          save();
+        });
+      });
+
+      table.appendChild(row);
+    }
+
+    document.querySelectorAll('.copy-card .copy-button').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const textarea = button.parentElement.querySelector('textarea');
+        const old = button.textContent;
+        const status = await copyText(textarea.value, textarea);
+        showCopyStatus(button, status, old);
+      });
+    });
+
+    document.getElementById('native-share').addEventListener('click', async () => {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Blacktop Basketball',
+          text: 'Find basketball courts before you leave. Free on iPhone and iPad.',
+          url: shareDownloadUrl
+        });
+      } else {
+        const button = document.getElementById('native-share');
+        const status = await copyText(shareMessage);
+        button.textContent = status === 'copied' ? 'Copied share text' : 'Copy failed - use a message box below';
+        setTimeout(() => {
+          button.textContent = 'Share download page';
+        }, status === 'copied' ? 1400 : 2600);
+      }
+    });
+
+    document.getElementById('export-csv').addEventListener('click', exportCsv);
+
+    document.getElementById('clear-completed').addEventListener('click', () => {
+      if (!confirm('Clear rows already marked downloaded?')) {
+        return;
+      }
+      Object.keys(state).forEach((id) => {
+        if (state[id]?.downloaded) {
+          state[id] = {};
+        }
+      });
+      save();
+      window.location.reload();
+    });
+
+    updateCounts();
+  </script>
+</body>
+</html>
