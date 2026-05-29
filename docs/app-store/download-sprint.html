@@ -46,7 +46,8 @@
         <p>Use native share on your phone, post to WhatsApp/X, or email two local Sheffield basketball contacts.</p>
       </div>
       <div class="send-grid">
-          <button id="native-share" class="copy-button" type="button">Share download page</button>
+        <button id="native-share" class="copy-button" type="button">Share download page</button>
+        <button id="copy-download-link" class="copy-button subtle" type="button">Copy download link</button>
         <a id="whatsapp-share" class="button" href="#">WhatsApp</a>
         <a id="x-share" class="button" href="#">X / Twitter</a>
         <a id="sbl-mail" class="button" href="#">Email SBL</a>
@@ -95,6 +96,42 @@ App Store 下载：
 https://apps.apple.com/gb/app/blacktop-basketball/id6769562571
 
 我今天想先拿到 3 个真实下载和反馈。如果你平时打球，能不能帮我下载打开一下？打开后回复我 “done/已下载”，我好统计真实下载。</textarea>
+        <button class="copy-button" type="button">Copy</button>
+      </article>
+    </section>
+
+    <section class="copy-grid">
+      <article class="copy-card">
+        <h2>Follow-Up Nudge</h2>
+        <p>Send 20-40 minutes after a warm message if they have not replied.</p>
+        <textarea readonly>Tiny favor if you have 30 seconds: could you tap this, download Blacktop Basketball, and open it once today?
+
+https://acewang377.github.io/Blacktop-App/download/?src=followup
+
+Just reply "done" after opening it. I only need 3 real downloads today, so one quick test genuinely helps.</textarea>
+        <button class="copy-button" type="button">Copy</button>
+      </article>
+
+      <article class="copy-card">
+        <h2>After They Say Yes</h2>
+        <p>Use when someone says they will try it but has not confirmed.</p>
+        <textarea readonly>Thank you. When you have opened Blacktop Basketball once, can you reply "done" here?
+
+Download page:
+https://acewang377.github.io/Blacktop-App/download/?src=confirm
+
+A screenshot of the app open is even better, but "done" is enough for me to count it.</textarea>
+        <button class="copy-button" type="button">Copy</button>
+      </article>
+
+      <article class="copy-card">
+        <h2>Chinese Follow-Up</h2>
+        <p>Use for WeChat or Chinese student contacts who have not replied.</p>
+        <textarea readonly>如果你现在方便的话，能不能帮我点这个链接下载并打开一次 Blacktop Basketball？
+
+https://acewang377.github.io/Blacktop-App/download/?src=wechat-followup
+
+打开后回我 “done/已下载” 就行。我今天只差几个真实下载确认，这个真的有帮助。</textarea>
         <button class="copy-button" type="button">Copy</button>
       </article>
     </section>
@@ -304,6 +341,12 @@ https://apps.apple.com/gb/app/blacktop-basketball/id6769562571
           button.textContent = 'Share download page';
         }, status === 'copied' ? 1400 : 2600);
       }
+    });
+
+    document.getElementById('copy-download-link').addEventListener('click', async () => {
+      const button = document.getElementById('copy-download-link');
+      const status = await copyText(`${publicDownloadUrl}?src=copy-link`);
+      showCopyStatus(button, status, 'Copy download link');
     });
 
     document.getElementById('export-csv').addEventListener('click', exportCsv);
