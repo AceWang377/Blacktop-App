@@ -14,7 +14,7 @@
     <section class="hero sprint-hero">
       <div>
         <h1>3 real downloads today.</h1>
-        <p class="lead">Use this page to copy messages, send the right asset, and track confirmed downloads from people who actually play basketball.</p>
+        <p class="lead">Use this page to copy messages, send the right asset, track first-round views, and collect confirmed downloads from people who actually play basketball.</p>
         <div class="actions">
           <a class="button primary" href="https://apps.apple.com/gb/app/blacktop-basketball/id6769562571">Open App Store</a>
           <a class="button" href="https://acewang377.github.io/Blacktop-App/download/?src=sprint">Open download page</a>
@@ -26,6 +26,10 @@
     </section>
 
     <section class="progress-board" aria-label="Download sprint progress">
+      <article>
+        <span id="view-count">0</span>
+        <p>Tracked views</p>
+      </article>
       <article>
         <span id="sent-count">0</span>
         <p>Messages sent</p>
@@ -180,6 +184,8 @@ https://acewang377.github.io/Blacktop-App/download/?src=wechat-followup
   <script>
     const appStoreUrl = 'https://apps.apple.com/gb/app/blacktop-basketball/id6769562571';
     const publicDownloadUrl = 'https://acewang377.github.io/Blacktop-App/download/';
+    const viewCounterUrl = 'https://api.counterapi.dev/v1/blacktop-basketball/promo-2026-05-29/';
+    const viewCounterBaseline = 1;
     const dmDownloadUrl = appStoreUrl;
     const groupDownloadUrl = appStoreUrl;
     const clubDownloadUrl = appStoreUrl;
@@ -209,6 +215,19 @@ https://acewang377.github.io/Blacktop-App/download/?src=wechat-followup
       document.getElementById('sent-count').textContent = sent;
       document.getElementById('reply-count').textContent = replied;
       document.getElementById('download-count').textContent = downloaded;
+    }
+
+    async function updateViewCount() {
+      try {
+        const response = await fetch(viewCounterUrl, { cache: 'no-store' });
+        if (!response.ok) {
+          return;
+        }
+        const data = await response.json();
+        const trackedViews = Math.max(0, Number(data.count || 0) - viewCounterBaseline);
+        document.getElementById('view-count').textContent = trackedViews;
+      } catch (error) {
+      }
     }
 
     function rowsAsArray() {
@@ -365,6 +384,7 @@ https://acewang377.github.io/Blacktop-App/download/?src=wechat-followup
     });
 
     updateCounts();
+    updateViewCount();
   </script>
 </body>
 </html>

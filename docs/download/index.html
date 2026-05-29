@@ -190,12 +190,35 @@
 
   <script>
     const appStoreUrl = 'https://apps.apple.com/gb/app/blacktop-basketball/id6769562571';
+    const viewCounterUrl = 'https://api.counterapi.dev/v1/blacktop-basketball/promo-2026-05-29/up';
     const params = new URLSearchParams(window.location.search);
     const src = params.get('src');
     const downloadLink = document.getElementById('download-link');
 
     if (src) {
       downloadLink.href = `${appStoreUrl}?ct=${encodeURIComponent(`blacktop_${src}`)}`;
+    }
+
+    function trackPromoView() {
+      if (params.has('notrack') || window.location.hostname !== 'acewang377.github.io') {
+        return;
+      }
+
+      const storageKey = 'blacktop-promo-view-2026-05-29';
+      try {
+        if (localStorage.getItem(storageKey)) {
+          return;
+        }
+        localStorage.setItem(storageKey, 'tracked');
+      } catch (error) {
+      }
+
+      fetch(viewCounterUrl, {
+        method: 'GET',
+        mode: 'cors',
+        cache: 'no-store',
+        keepalive: true
+      }).catch(() => {});
     }
 
     async function copyDone() {
@@ -233,6 +256,8 @@
         button.textContent = 'I opened it - copy done';
       }, 1800);
     });
+
+    trackPromoView();
   </script>
 </body>
 </html>
