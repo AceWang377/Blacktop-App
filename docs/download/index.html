@@ -46,18 +46,36 @@
 
     .download-card {
       display: grid;
-      gap: 18px;
-      justify-items: start;
+      grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+      gap: 24px;
+      align-items: center;
       padding: 30px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.08);
     }
 
-    .download-card img {
+    .download-copy {
+      display: grid;
+      gap: 18px;
+      justify-items: start;
+    }
+
+    .download-card .logo {
       width: 72px;
       height: 72px;
       border-radius: 16px;
+    }
+
+    .download-card .download-preview {
+      width: 100%;
+      height: min(52vh, 430px);
+      object-fit: cover;
+      object-position: top;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.22);
+      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24);
     }
 
     h1 {
@@ -115,9 +133,30 @@
       font-size: 18px;
     }
 
+    .step-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 900;
+      line-height: 1.45;
+    }
+
+    .step-list span {
+      color: var(--green);
+    }
+
     @media (max-width: 520px) {
       .download-card {
+        grid-template-columns: 1fr;
         padding: 28px;
+      }
+
+      .download-card .download-preview {
+        height: 280px;
       }
 
       .actions {
@@ -129,15 +168,23 @@
 <body>
   <main class="page download-page">
     <section class="download-card">
-      <img src="../app-store/blacktop-promo-video/assets/logo.png" alt="Blacktop logo">
-      <h1>Blacktop Basketball</h1>
-      <p>Find basketball courts nearby, filter useful court details, save regular spots, and open directions before you leave.</p>
-      <div class="actions">
-        <a id="download-link" class="button primary" href="https://apps.apple.com/gb/app/blacktop-basketball/id6769562571">Download on the App Store</a>
-        <button id="done-copy" class="button" type="button">Copy "done" reply</button>
+      <div class="download-copy">
+        <img class="logo" src="../app-store/blacktop-promo-video/assets/logo.png" alt="Blacktop logo">
+        <h1>Blacktop Basketball</h1>
+        <p>Find basketball courts nearby, filter useful court details, save regular spots, and open directions before you leave.</p>
+        <div class="actions">
+          <a id="download-link" class="button primary" href="https://apps.apple.com/gb/app/blacktop-basketball/id6769562571">Download on the App Store</a>
+          <button id="done-copy" class="button" type="button">I opened it - copy done</button>
+        </div>
+        <p class="trust-line">Free for iPhone and iPad. Browsing works without an account.</p>
+        <ul class="step-list" aria-label="Download confirmation steps">
+          <li><span>1.</span> Tap Download on the App Store.</li>
+          <li><span>2.</span> Open Blacktop Basketball once.</li>
+          <li><span>3.</span> Come back and reply "done".</li>
+        </ul>
+        <p class="done-note">After downloading and opening the app, reply <strong>done</strong> to the person who sent you this link.</p>
       </div>
-      <p class="trust-line">Free for iPhone and iPad. Browsing works without an account.</p>
-      <p class="done-note">After downloading and opening the app, reply <strong>done</strong> to the person who sent you this link.</p>
+      <img class="download-preview" src="../app-store/screenshots/current/v1.1.0-build3-2026-05-26/marketing/iphone-6-9/01-find-courts.jpg" alt="Blacktop map screenshot">
     </section>
   </main>
 
@@ -183,7 +230,7 @@
       const button = document.getElementById('done-copy');
       button.textContent = copied ? 'Copied done reply' : 'Reply "done" manually';
       setTimeout(() => {
-        button.textContent = 'Copy "done" reply';
+        button.textContent = 'I opened it - copy done';
       }, 1800);
     });
   </script>
